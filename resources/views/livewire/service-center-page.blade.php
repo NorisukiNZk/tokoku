@@ -1,19 +1,22 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-    <div class="surface-card rounded-xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="space-y-1">
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Layanan Servis &amp; Perawatan PC</h1>
-            <p class="text-sm text-muted-ink max-w-xl">
-                Pilih paket perawatan atau perbaikan di bawah ini, atau lacak perkembangan unit yang sudah Anda titipkan di bengkel kami.
+    <div class="surface-ink rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-1.5">
+            <span class="inline-block px-2.5 py-0.5 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-bold text-xs">
+                Workshop &amp; Lacak Resi Transparan
+            </span>
+            <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">Layanan Servis &amp; Perawatan PC</h1>
+            <p class="text-sm ink-muted max-w-xl">
+                Pilih paket perawatan atau perbaikan di bawah ini, atau lacak perkembangan suhu dan pengerjaan unit yang sedang dititipkan di bengkel kami.
             </p>
         </div>
 
-        <div role="tablist" aria-label="Pilihan Layanan Servis" class="surface-subtle p-1.5 rounded-xl inline-flex flex-wrap gap-1.5 shrink-0">
+        <div role="tablist" aria-label="Pilihan Layanan Servis" class="surface-ink-card p-1.5 rounded-xl inline-flex flex-wrap gap-1.5 shrink-0">
             <button
                 type="button"
                 role="tab"
                 aria-selected="{{ $activeTab === 'booking' ? 'true' : 'false' }}"
                 wire:click="switchTab('booking')"
-                class="min-h-11 px-4 rounded-lg text-sm cursor-pointer transition-colors {{ $activeTab === 'booking' ? 'btn-accent' : 'font-medium text-muted-ink hover:text-[var(--text-primary)]' }}"
+                class="min-h-11 px-4 rounded-lg text-sm cursor-pointer transition-colors {{ $activeTab === 'booking' ? 'btn-ink-accent' : 'ink-muted hover:text-white font-medium' }}"
             >
                 Booking &amp; Kisaran Biaya
             </button>
@@ -22,7 +25,7 @@
                 role="tab"
                 aria-selected="{{ $activeTab === 'tracking' ? 'true' : 'false' }}"
                 wire:click="switchTab('tracking')"
-                class="min-h-11 px-4 rounded-lg text-sm cursor-pointer transition-colors {{ $activeTab === 'tracking' ? 'btn-accent' : 'font-medium text-muted-ink hover:text-[var(--text-primary)]' }}"
+                class="min-h-11 px-4 rounded-lg text-sm cursor-pointer transition-colors {{ $activeTab === 'tracking' ? 'btn-ink-accent' : 'ink-muted hover:text-white font-medium' }}"
             >
                 Lacak Status Servis
             </button>

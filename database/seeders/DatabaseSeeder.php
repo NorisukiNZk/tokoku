@@ -412,7 +412,7 @@ class DatabaseSeeder extends Seeder
         $createdProducts = [];
         foreach ($items as $item) {
             $svgPath = 'products/' . strtolower($item['sku']) . '.svg';
-            Storage::disk('public')->put($svgPath, $this->renderHonestSpecPlaceholderSvg($item['sku'], $item['brand'], $item['slot']));
+            Storage::disk('public')->put($svgPath, $this->renderHonestSpecPlaceholderSvg($item['sku'], $item['brand'], $item['slot'], $item['condition']));
 
             $createdProducts[$item['sku']] = Product::query()->updateOrCreate(
                 ['sku' => $item['sku']],
@@ -663,40 +663,80 @@ class DatabaseSeeder extends Seeder
         );
     }
 
-    private function renderHonestSpecPlaceholderSvg(string $sku, string $brand, string $slot): string
+    private function renderHonestSpecPlaceholderSvg(string $sku, string $brand, string $slot, string $condition = 'new'): string
     {
         $slotNames = [
             'cpu' => 'Prosesor Desktop',
             'motherboard' => 'Motherboard PC',
             'ram' => 'Memori RAM',
-            'gpu' => 'Kartu Grafis (VGA)',
-            'storage' => 'Penyimpanan SSD',
+            'gpu' => 'Kartu Grafis',
+            'storage' => 'SSD NVMe',
             'cooler' => 'Pendingin CPU',
-            'case' => 'Casing Komputer',
+            'case' => 'Casing Tower',
             'psu' => 'Power Supply',
             'laptop' => 'Laptop Kerja',
-            'monitor' => 'Layar Monitor',
+            'monitor' => 'Monitor IPS',
         ];
         $slotLabel = $slotNames[$slot] ?? 'Perangkat PC';
         $safeSku = htmlspecialchars($sku, ENT_QUOTES, 'UTF-8');
         $safeBrand = htmlspecialchars($brand, ENT_QUOTES, 'UTF-8');
+        $brandUpper = strtoupper($brand);
 
-        $iconShape = match ($slot) {
-            'cpu' => '<rect x="250" y="95" width="140" height="140" rx="18" fill="#DBEAFE" stroke="#2563EB" stroke-width="3"/><rect x="282" y="127" width="76" height="76" rx="10" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.5"/>',
-            'gpu' => '<rect x="190" y="110" width="260" height="115" rx="16" fill="#DBEAFE" stroke="#2563EB" stroke-width="3"/><circle cx="265" cy="167" r="36" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.5"/><circle cx="375" cy="167" r="36" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.5"/>',
-            'laptop', 'monitor' => '<rect x="205" y="95" width="230" height="135" rx="12" fill="#DBEAFE" stroke="#2563EB" stroke-width="3"/><line x1="180" y1="242" x2="460" y2="242" stroke="#1D4ED8" stroke-width="5" stroke-linecap="round"/>',
-            default => '<rect x="220" y="100" width="200" height="130" rx="16" fill="#DBEAFE" stroke="#2563EB" stroke-width="3"/><line x1="255" y1="140" x2="385" y2="140" stroke="#1D4ED8" stroke-width="3" stroke-linecap="round"/><line x1="255" y1="170" x2="355" y2="170" stroke="#3B82F6" stroke-width="3" stroke-linecap="round"/><line x1="255" y1="200" x2="330" y2="200" stroke="#60A5FA" stroke-width="3" stroke-linecap="round"/>',
+        $bgOuter = '#111827';
+        $bgInner = '#1E293B';
+        $accent = '#FB923C';
+        $accentSoft = '#EA580C';
+
+        if ($brandUpper === 'INTEL') {
+            $bgOuter = '#0F172A';
+            $bgInner = '#172554';
+            $accent = '#38BDF8';
+            $accentSoft = '#0284C7';
+        } elseif ($slot === 'gpu' && ($brandUpper === 'ASUS' || $brandUpper === 'MSI')) {
+            $bgOuter = '#0F172A';
+            $bgInner = '#132A24';
+            $accent = '#34D399';
+            $accentSoft = '#059669';
+        } elseif ($slot === 'laptop' || $slot === 'monitor') {
+            $bgOuter = '#1E293B';
+            $bgInner = '#334155';
+            $accent = '#FDBA74';
+            $accentSoft = '#EA580C';
+        } elseif ($condition === 'minus_parts') {
+            $bgOuter = '#271515';
+            $bgInner = '#3B1C1C';
+            $accent = '#FCA5A5';
+            $accentSoft = '#DC2626';
+        }
+
+        $artwork = match ($slot) {
+            'cpu' => '<rect x="235" y="75" width="170" height="170" rx="16" fill="#0F172A" stroke="' . $accent . '" stroke-width="3.5"/><rect x="260" y="100" width="120" height="120" rx="10" fill="' . $bgInner . '" stroke="#94A3B8" stroke-width="2"/><rect x="292" y="132" width="56" height="56" rx="6" fill="' . $accentSoft . '"/><circle cx="255" cy="225" r="5" fill="' . $accent . '"/>',
+            'gpu' => '<rect x="155" y="96" width="330" height="130" rx="16" fill="#0F172A" stroke="' . $accent . '" stroke-width="3"/><rect x="155" y="96" width="330" height="14" rx="4" fill="' . $accentSoft . '"/><circle cx="235" cy="166" r="40" fill="' . $bgInner . '" stroke="' . $accent . '" stroke-width="2.5"/><circle cx="235" cy="166" r="14" fill="' . $accent . '"/><circle cx="330" cy="166" r="40" fill="' . $bgInner . '" stroke="' . $accent . '" stroke-width="2.5"/><circle cx="330" cy="166" r="14" fill="' . $accent . '"/><circle cx="425" cy="166" r="40" fill="' . $bgInner . '" stroke="' . $accent . '" stroke-width="2.5"/><circle cx="425" cy="166" r="14" fill="' . $accent . '"/><rect x="210" y="226" width="145" height="12" rx="3" fill="#F59E0B"/>',
+            'motherboard' => '<rect x="210" y="68" width="220" height="190" rx="12" fill="#0F172A" stroke="#64748B" stroke-width="3"/><rect x="230" y="88" width="24" height="72" rx="4" fill="' . $accentSoft . '"/><rect x="268" y="96" width="66" height="66" rx="6" fill="' . $bgInner . '" stroke="' . $accent . '" stroke-width="2.5"/><rect x="352" y="88" width="10" height="84" rx="2" fill="#94A3B8"/><rect x="368" y="88" width="10" height="84" rx="2" fill="' . $accent . '"/><rect x="384" y="88" width="10" height="84" rx="2" fill="#94A3B8"/><rect x="400" y="88" width="10" height="84" rx="2" fill="' . $accent . '"/><rect x="235" y="190" width="150" height="12" rx="3" fill="#CBD5E1"/><rect x="235" y="216" width="110" height="10" rx="3" fill="#64748B"/>',
+            'ram' => '<rect x="175" y="112" width="290" height="44" rx="8" fill="#0F172A" stroke="' . $accent . '" stroke-width="2.5"/><rect x="175" y="112" width="290" height="10" rx="4" fill="' . $accentSoft . '"/><rect x="195" y="156" width="250" height="8" fill="#F59E0B"/><rect x="175" y="182" width="290" height="44" rx="8" fill="#0F172A" stroke="' . $accent . '" stroke-width="2.5"/><rect x="175" y="182" width="290" height="10" rx="4" fill="' . $accentSoft . '"/><rect x="195" y="226" width="250" height="8" fill="#F59E0B"/>',
+            'storage' => '<rect x="170" y="128" width="300" height="72" rx="10" fill="#0F172A" stroke="' . $accent . '" stroke-width="3"/><rect x="170" y="142" width="22" height="44" fill="#F59E0B"/><rect x="215" y="144" width="44" height="40" rx="4" fill="' . $accentSoft . '"/><rect x="275" y="142" width="76" height="44" rx="4" fill="' . $bgInner . '" stroke="#94A3B8" stroke-width="1.5"/><rect x="366" y="142" width="76" height="44" rx="4" fill="' . $bgInner . '" stroke="#94A3B8" stroke-width="1.5"/>',
+            'cooler' => '<rect x="230" y="80" width="180" height="164" rx="14" fill="#0F172A" stroke="#94A3B8" stroke-width="2.5"/><circle cx="320" cy="162" r="58" fill="' . $bgInner . '" stroke="' . $accent . '" stroke-width="3"/><circle cx="320" cy="162" r="18" fill="' . $accent . '"/><circle cx="252" cy="100" r="6" fill="#F59E0B"/><circle cx="388" cy="100" r="6" fill="#F59E0B"/><circle cx="252" cy="224" r="6" fill="#F59E0B"/><circle cx="388" cy="224" r="6" fill="#F59E0B"/>',
+            'case' => '<rect x="225" y="66" width="190" height="196" rx="14" fill="#0F172A" stroke="' . $accent . '" stroke-width="3"/><rect x="242" y="84" width="112" height="126" rx="8" fill="' . $bgInner . '" stroke="#64748B" stroke-width="2"/><circle cx="384" cy="106" r="14" fill="none" stroke="' . $accent . '" stroke-width="2.5"/><circle cx="384" cy="146" r="14" fill="none" stroke="' . $accent . '" stroke-width="2.5"/><circle cx="384" cy="186" r="14" fill="none" stroke="' . $accent . '" stroke-width="2.5"/><rect x="242" y="222" width="156" height="24" rx="4" fill="#1E293B"/>',
+            'psu' => '<rect x="200" y="92" width="240" height="148" rx="14" fill="#0F172A" stroke="' . $accent . '" stroke-width="3"/><circle cx="282" cy="166" r="48" fill="' . $bgInner . '" stroke="#94A3B8" stroke-width="2.5"/><circle cx="282" cy="166" r="26" fill="none" stroke="' . $accent . '" stroke-width="2"/><rect x="352" y="114" width="66" height="34" rx="6" fill="' . $accentSoft . '"/><rect x="352" y="162" width="66" height="14" rx="3" fill="#475569"/><rect x="352" y="186" width="48" height="14" rx="3" fill="#475569"/>',
+            'laptop' => '<rect x="190" y="82" width="260" height="150" rx="12" fill="#0F172A" stroke="#94A3B8" stroke-width="3"/><rect x="204" y="96" width="232" height="122" rx="6" fill="' . $bgInner . '"/><rect x="228" y="120" width="90" height="12" rx="3" fill="' . $accent . '"/><rect x="228" y="144" width="145" height="8" rx="2" fill="#64748B"/><rect x="155" y="236" width="330" height="14" rx="7" fill="#CBD5E1"/>',
+            'monitor' => '<rect x="175" y="76" width="290" height="158" rx="10" fill="#0F172A" stroke="' . $accent . '" stroke-width="3"/><rect x="188" y="89" width="264" height="132" rx="4" fill="' . $bgInner . '"/><rect x="298" y="234" width="44" height="22" fill="#64748B"/><rect x="252" y="252" width="136" height="10" rx="5" fill="#CBD5E1"/>',
+            default => '<rect x="220" y="96" width="200" height="136" rx="16" fill="#0F172A" stroke="' . $accent . '" stroke-width="3"/>',
         };
+
+        $minusRibbon = $condition === 'minus_parts'
+            ? '<rect x="442" y="32" width="166" height="32" rx="8" fill="#DC2626"/><text x="525" y="53" text-anchor="middle" fill="#FFFFFF" font-family="Inter, sans-serif" font-size="13" font-weight="700">UNIT MINUS / PART</text>'
+            : '';
 
         return <<<SVG
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" width="640" height="480">
-  <rect width="640" height="480" fill="#EEF2F7"/>
-  <rect x="28" y="28" width="584" height="424" rx="20" fill="#F8FAFC" stroke="#DCE3EC" stroke-width="2"/>
-  {$iconShape}
-  <text x="320" y="305" text-anchor="middle" fill="#0F172A" font-family="Inter, Segoe UI, sans-serif" font-size="28" font-weight="700">{$safeBrand}</text>
-  <text x="320" y="340" text-anchor="middle" fill="#475569" font-family="Inter, Segoe UI, sans-serif" font-size="18" font-weight="500">{$slotLabel} ({$safeSku})</text>
-  <rect x="215" y="378" width="210" height="32" rx="8" fill="#E2E8F0"/>
-  <text x="320" y="399" text-anchor="middle" fill="#334155" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="600">[Ilustrasi Contoh Stok]</text>
+  <rect width="640" height="480" fill="{$bgOuter}"/>
+  <rect x="20" y="20" width="600" height="440" rx="20" fill="{$bgInner}" stroke="#334155" stroke-width="2"/>
+  {$minusRibbon}
+  {$artwork}
+  <text x="320" y="328" text-anchor="middle" fill="#F8FAFC" font-family="Plus Jakarta Sans, Inter, Segoe UI, sans-serif" font-size="30" font-weight="800">{$safeBrand}</text>
+  <text x="320" y="362" text-anchor="middle" fill="{$accent}" font-family="Inter, Segoe UI, sans-serif" font-size="18" font-weight="600">{$slotLabel} &middot; {$safeSku}</text>
+  <rect x="220" y="394" width="200" height="30" rx="8" fill="#0F172A" stroke="#334155" stroke-width="1"/>
+  <text x="320" y="414" text-anchor="middle" fill="#CBD5E1" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="600">[Ilustrasi Contoh Stok]</text>
 </svg>
 SVG;
     }

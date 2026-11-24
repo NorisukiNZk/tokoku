@@ -1,4 +1,6 @@
 @php
+    $productUrl = route('product.show', $product->slug);
+    $waUrl = $store->whatsappUrl($product->whatsappInquiryMessage($productUrl));
     $savedPayload = [
         'id' => $product->id,
         'slug' => $product->slug,
@@ -6,7 +8,20 @@
         'price' => $product->formattedPrice(),
         'condition' => $product->conditionShortLabel(),
         'image' => $product->primaryImageUrl(),
-        'url' => route('product.show', $product->slug),
+        'url' => $productUrl,
+    ];
+    $comparePayload = [
+        'id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->formattedPrice(),
+        'priceNum' => $product->price,
+        'condition' => $product->conditionShortLabel(),
+        'negotiable' => (bool) $product->is_negotiable,
+        'warranty' => $product->warranty_info ?: 'Cek sepuasnya di toko',
+        'specs' => implode(' · ', $product->specSummaryBadges()),
+        'image' => $product->primaryImageUrl(),
+        'url' => $productUrl,
+        'waUrl' => $waUrl,
     ];
 @endphp
 <div
@@ -83,7 +98,20 @@
                         </span>
                     </div>
 
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button
+                            type="button"
+                            @click="$store.tokoku.toggleCompare(@js($comparePayload))"
+                            :aria-pressed="$store.tokoku.isCompared({{ $product->id }}).toString()"
+                            class="min-h-11 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                            :class="$store.tokoku.isCompared({{ $product->id }}) ? 'btn-ghost-active' : 'btn-secondary'"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            <span x-text="$store.tokoku.isCompared({{ $product->id }}) ? 'Dibandingkan' : 'Bandingkan'">Bandingkan</span>
+                        </button>
+
                         <button
                             type="button"
                             @click="$store.tokoku.toggleSaved(@js($savedPayload))"
@@ -109,10 +137,10 @@
                     </div>
                 </div>
 
-                <h1 class="text-xl sm:text-2xl font-bold leading-snug">{{ $product->name }}</h1>
+                <h1 class="font-display text-xl sm:text-2xl font-extrabold leading-snug">{{ $product->name }}</h1>
 
                 <div class="flex flex-wrap items-baseline gap-3 pt-1">
-                    <p class="text-2xl sm:text-3xl font-bold tabular-nums">{{ $product->formattedPrice() }}</p>
+                    <p class="font-display text-2xl sm:text-3xl font-extrabold tabular-nums">{{ $product->formattedPrice() }}</p>
                     <span class="text-sm font-medium {{ $product->is_negotiable ? 'text-[var(--accent-soft-fg)]' : 'text-muted-ink' }}">
                         {{ $product->is_negotiable ? 'Bisa nego wajar' : 'Harga pas (nett)' }}
                     </span>

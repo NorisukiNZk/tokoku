@@ -1,41 +1,34 @@
-# DESIGN.md: Panduan Identitas Visual Tokoku (Edisi Ramah Pengguna)
+# DESIGN.md: Panduan Identitas Visual Tokoku (Edisi Hardware Storefront Berkarakter)
 
-## Identitas & Arah Pengalaman Pengguna (UX)
-- **Nama Produk**: Tokoku (penanda merek teks bersih hingga pemilik mengunggah logo resmi di Panel Admin).
-- **Tujuan Rombak UX**: Menghilangkan kesan kaku dan melelahkan mata akibat kode teknis berlebih. Antarmuka dirancang akrab bagi pembeli umum layaknya menjelajah Facebook Marketplace: bersih, ruang kosong lega, istilah mudah dimengerti orang awam, dan tidak menumpuk terlalu banyak kotak dalam satu pandangan.
+## Identitas & Arah Visual
+- **Nama Produk**: Tokoku (toko komponen PC baru & second bergaransi, simulasi rakit PC interaktif, dan bengkel servis terukur).
+- **Kepribadian Visual**: Memecah kesan datar serba putih melalui kontras terarah antara **Blok Sorotan Arang Gelap (`#0F172A`)** dengan **Katalog Putih Bersih (`#FFFFFF`)** dan **Aksen Oranye Teknis (`#C2410C` terang / `#FB923C` gelap)** yang identik dengan bengkel perangkat keras profesional.
 
-## Tipografi Ramah Mata (Tanpa Monospace Berlebih)
-- **Huruf Tunggal Utama (`Inter`)**: Dipilih khusus karena bukaan huruf lebar, tinggi huruf kecil (*x-height*) proporsional, dan paling nyaman dibaca lama di layar ponsel maupun laptop tanpa membuat mata cepat lelah.
-- **Aturan Keterbacaan**:
-  - Gunakan penulisan kalimat wajar (*Sentence case* atau *Title Case*), hindari huruf kapital semua (*ALL CAPS*) pada label dan tombol.
-  - Jarak antarbaris (`line-height`) longgar (`1.6` untuk paragraf) dan angka harga sejajar (`tabular-nums`).
-  - Huruf kode (`monospace`) tidak lagi dipakai pada label kondisi atau spesifikasi barang; hanya dipakai tipis bila menampilkan nomor tiket resi yang perlu disalin.
+## Tipografi Berpasangan (Tegas di Judul, Ringan di Isi)
+- **Display & Harga (`Plus Jakarta Sans` 700/800)**: Memberikan karakter modern dan ketegasan pada judul utama, sorotan unit, dan angka harga sejajar (`tabular-nums`).
+- **Teks Bacaan & Label (`Inter` 400/500/600)**: Menjaga keterbacaan panjang yang nyaman di mata pada deskripsi barang, filter, dan formulir.
 
-## Sistem Warna Tenang & Ramah (2 Netral Bersih + 1 Aksen Biru Marketplace)
-Seluruh pasangan warna diuji memenuhi kontras WCAG AA di Mode Terang maupun Mode Gelap.
+## Sistem Warna (2 Netral Kontras + 1 Aksen Oranye Teknis)
+Seluruh pasangan teks dan batas komponen lulus kontras minimum WCAG AA di Mode Terang dan Mode Gelap.
 
 ### Mode Terang (Default)
-- **Latar Halaman**: `#F4F6F9` (abu-biru sangat lembut agar kartu putih tampak bersih tanpa garis tepi kasar)
-- **Permukaan Kartu**: `#FFFFFF` dengan garis tepi halus `#DCE3EC`
-- **Permukaan Lembut**: `#EEF2F7`
-- **Teks Utama**: `#0F172A` (kontras > 16:1)
-- **Teks Sekunder**: `#475569` (kontras > 7.5:1 di atas putih)
-- **Aksen Utama (Biru Marketplace)**: `#1D4ED8` dengan teks `#FFFFFF` (kontras 6.70:1, nyaman di mata dan menumbuhkan rasa percaya)
-- **Aksen Lembut (Tab/Pilihan Aktif)**: `#EFF6FF` dengan teks `#1E40AF` dan tepi `#93C5FD`
+- **Kanvas**: `#F5F6F8`
+- **Permukaan Kartu**: `#FFFFFF` (tepi `#DDE2EA`)
+- **Blok Kontras Editorial (`surface-ink`)**: `#0F172A` dengan teks `#F8FAFC` dan kartu dalam `#1E293B` (memecah monotoni halaman katalog)
+- **Teks Utama**: `#0F172A` | **Teks Sekunder**: `#475569`
+- **Aksen Utama (Oranye Teknis)**: `#C2410C` dengan teks `#FFFFFF` (kontras `5.18:1`)
+- **Aksen Lembut**: `#FFF7ED` dengan teks `#9A3412` (kontras `6.88:1`) dan tepi `#EA580C`
 
 ### Mode Gelap
-- **Latar Halaman**: `#0F172A` (biru-abu malam yang teduh, bukan hitam pekat yang menyilaukan teks)
-- **Permukaan Kartu**: `#1E293B` dengan garis tepi `#334155`
-- **Permukaan Lembut**: `#273549`
-- **Teks Utama**: `#F8FAFC` (kontras > 13:1)
-- **Teks Sekunder**: `#CBD5E1` (kontras > 8.5:1)
-- **Aksen Utama**: `#60A5FA` dengan teks gelap `#0F172A` (kontras > 8.1:1)
-- **Aksen Lembut**: `#1E3A5F` dengan teks `#BFDBFE` dan tepi `#3B82F6`
+- **Kanvas**: `#0B0F19`
+- **Permukaan Kartu**: `#151B2B` (tepi `#283248`)
+- **Blok Kontras Editorial**: `#1B2336` dengan garis aksen atas `#EA580C`
+- **Teks Utama**: `#F8FAFC` | **Teks Sekunder**: `#CBD5E1`
+- **Aksen Utama**: `#FB923C` dengan teks gelap `#0B0F19` (kontras `8.72:1`)
+- **Aksen Lembut**: `#2C190E` dengan teks `#FDBA74` (kontras `9.40:1`)
 
-## Tata Letak & Dials
-- `Dial: ENERGY 2 / RHYTHM 2 / MOTION 2`
-- **Alasan Gerak (`MOTION 2`)**: Seluruh gerak bersifat fungsional (bukan hiasan berulang): perpindahan antarhalaman menggunakan `wire:navigate` untuk menghilangkan kedip layar putih; dialog, laci barang tersimpan, dan *bottom sheet* seluler menggunakan transisi buka-tutup halus 180ms untuk menjaga arah spasial; *skeleton card* muncul hanya saat Livewire sedang menyaring katalog; dan seluruh transisi menghormati `prefers-reduced-motion: reduce`.
-- **Etalase (`/`)**: Tata letak dua kolom ala Facebook Marketplace (Sidebar filter di kiri pada layar lebar, panel filter lipat di ponsel agar foto barang langsung terlihat di atas) dan kartu produk bersih berfokus pada foto, harga, serta 1 baris info inti.
-- **Rakit PC (`/rakit-pc`)**: Alur bertahap bernomor dengan bilah kelengkapan komponen dan pilihan paket awal sekali klik bagi pemula.
-- **Servis (`/servis`)**: Terbagi rapi menjadi 2 tab fokus (*Booking & Kisaran Biaya* serta *Lacak Status Servis*) sehingga halaman tidak memanjang berlebihan.
-- **Motif Identitas**: Kartu putih bersudut lembut (`rounded-xl` pada kartu utama, `rounded-lg` pada tombol & input, `rounded-md` pada label kondisi) dengan penanda kondisi warna tenang dalam bahasa sehari-hari (`Baru Segel`, `Second Mulus`, `Second Normal`, `Unit Minus`).
+## Dials & Motif Identitas
+- `Dial: ENERGY 3 / RHYTHM 3 / MOTION 2`
+- **ENERGY 3 (Bold Focal Anchor)**: Blok sorotan arang gelap di beranda, ilustrasi hardware berwarna khas per kategori/merek, dan diagram PC menyala interaktif di `/rakit-pc`.
+- **RHYTHM 3 (Varied Composition)**: Komposisi berubah jelas antarbagian: blok sorotan gelap asimetris -> strip kategori cepat -> tata letak 2 kolom katalog + fitur bandingkan barang -> blok bengkel kontras.
+- **MOTION 2 (Functional Motion)**: Transisi SPA `wire:navigate`, buka-tutup halus modal/laci/lightbox, *skeleton* saat Livewire memfilter, dan nyala komponen di diagram casing PC, seluruhnya patuh pada `prefers-reduced-motion: reduce`.

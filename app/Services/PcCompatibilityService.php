@@ -265,4 +265,168 @@ class PcCompatibilityService
             ];
         });
     }
+
+    /**
+     * Deterministically evaluate practical capability tiers strictly from selected component specs.
+     *
+     * @param array<string, Model|null> $selected
+     * @return array{
+     *     ready: bool,
+     *     tier_label: string,
+     *     tier_tone: string,
+     *     summary: string,
+     *     office_score: int,
+     *     gaming_score: int,
+     *     creator_score: int,
+     *     notes: list<string>
+     * }
+     */
+    public function evaluatePerformanceProfile(array $selected): array
+    {
+        $cpu = $selected['cpu'] ?? null;
+        $gpu = $selected['gpu'] ?? null;
+        $ram = $selected['ram'] ?? null;
+        $storage = $selected['storage'] ?? null;
+
+        if (! $cpu && ! $gpu) {
+            return [
+                'ready' => false,
+                'tier_label' => 'Menunggu Pilihan Part',
+                'tier_tone' => 'idle',
+                'summary' => 'Pilih Prosesor (CPU) atau Kartu Grafis (VGA) lewat diagram casing atau daftar slot di bawah untuk menilai kelas rakitan.',
+                'office_score' => 0,
+                'gaming_score' => 0,
+                'creator_score' => 0,
+                'notes' => [
+                    'Skor dihitung langsung dari kelas prosesor, GPU, kapasitas RAM, dan penyimpanan yang dipilih.',
+                ],
+            ];
+        }
+
+        $cpuScore = 0;
+        $hasIgpu = true;
+        if ($cpu) {
+            $cpuName = strtoupper((string) $cpu->name);
+            $cpuSpecs = $cpu->compatibility_specs ?? [];
+            $hasIgpu = (bool) ($cpuSpecs['has_igpu'] ?? true);
+            $cpuTier = (string) ($cpu->price_tier ?? 'mid');
+
+            $cpuScore = match (true) {
+                (bool) preg_match('/(RYZEN 9|CORE I9|ULTRA 9|THREADRIPPER|XEON)/', $cpuName) => 94,
+                (bool) preg_match('/(RYZEN 7|CORE I7|ULTRA 7)/', $cpuName) => 82,
+                (bool) preg_match('/(RYZEN 5|CORE I5|ULTRA 5)/', $cpuName) => 68,
+                (bool) preg_match('/(RYZEN 3|CORE I3|PENTIUM|ATHLON|CELERON)/', $cpuName) => 46,
+                $cpuTier === 'high' => 86,
+                $cpuTier === 'mid' => 66,
+                default => 48,
+            };
+
+            $socket = strtoupper((string) ($cpuSpecs['socket'] ?? ''));
+            if (in_array($socket, ['AM5', 'LGA1700', 'LGA1851'], true)) {
+                $cpuScore = min(100, $cpuScore + 5);
+            }
+        }
+
+        $gpuScore = 0;
+        if ($gpu) {
+            $gpuName = strtoupper((string) $gpu->name);
+            $gpuSpecs = $gpu->compatibility_specs ?? [];
+            $gpuTdp = (int) ($gpuSpecs['tdp_watt'] ?? 0);
+            $gpuTier = (string) ($gpu->price_tier ?? 'mid');
+
+            $gpuScore = match (true) {
+                (bool) preg_match('/(5090|4090|5080|4080|7900 XTX|9070 XT)/', $gpuName) => 98,
+                (bool) preg_match('/(5070|4070|3090|3080|7900 XT|7900 GRE|7800 XT|6950|6900)/', $gpuName) => 87,
+                (bool) preg_match('/(4060 TI|3070|6800|7700|6750|6700|B580)/', $gpuName) => 76,
+                (bool) preg_match('/(4060|3060|6650|6600|7600|2070|A770|A750)/', $gpuName) => 64,
+                (bool) preg_match('/(3050|2060|1660|5600|6500|1070|1080)/', $gpuName) => 50,
+                $gpuTier === 'high' => 86,
+                $gpuTier === 'mid' => 64,
+                $gpuTdp >= 220 => 80,
+                $gpuTdp >= 130 => 62,
+                default => 42,
+            };
+        } elseif ($cpu && $hasIgpu) {
+            $gpuScore = 26;
+        }
+
+        $ramGb = (int) ($ram?->compatibility_specs['capacity_gb'] ?? 0);
+        $ramType = strtoupper((string) ($ram?->compatibility_specs['ram_type'] ?? ''));
+        $ramScore = 0;
+        if ($ram) {
+            $ramScore = match (true) {
+                $ramGb >= 64 => 98,
+                $ramGb >= 32 => 90,
+                $ramGb >= 16 => 76,
+                $ramGb >= 8 => 52,
+                default => 38,
+            };
+            if ($ramType === 'DDR5') {
+                $ramScore = min(100, $ramScore + 5);
+            }
+        }
+
+        $storageText = strtoupper((string) (($storage?->name ?? '') . ' ' . ($storage?->spec_summary ?? '')));
+        $storageScore = $storage ? (str_contains($storageText, 'NVME') || str_contains($storageText, 'SSD') ? 90 : 55) : 45;
+
+        $effectiveRam = $ram ? $ramScore : 45;
+        $effectiveCpu = $cpu ? $cpuScore : 40;
+
+        $officeScore = (int) min(100, max(15, round($effectiveCpu * 0.52 + $effectiveRam * 0.34 + $storageScore * 0.14)));
+
+        if (! $gpu && $cpu && ! $hasIgpu) {
+            $gamingScore = 0;
+        } elseif (! $gpu) {
+            $gamingScore = (int) min(38, max(12, round($effectiveCpu * 0.35 + $gpuScore * 0.65)));
+        } else {
+            $gamingScore = (int) min(100, max(18, round($effectiveCpu * 0.32 + $gpuScore * 0.56 + $effectiveRam * 0.12)));
+        }
+
+        $creatorScore = (int) min(100, max(15, round($effectiveCpu * 0.44 + max($gpuScore, 20) * 0.36 + $effectiveRam * 0.20)));
+
+        $notes = [];
+        if (! $gpu && $cpu && ! $hasIgpu) {
+            $tierLabel = 'Perlu VGA Terpisah';
+            $tierTone = 'warn';
+            $summary = 'Prosesor terpilih tidak memiliki grafis bawaan (tanpa iGPU). Tambahkan Kartu Grafis agar layar bisa tampil.';
+            $notes[] = 'Pilih slot Kartu Grafis (VGA) untuk membuka kemampuan grafis dan tampilan layar.';
+        } elseif ($gamingScore >= 82 && $creatorScore >= 78) {
+            $tierLabel = 'Workstation & Gaming 1440p/4K';
+            $tierTone = 'flagship';
+            $summary = 'Kombinasi prosesor, kartu grafis, dan memori siap untuk render 3D berat, editing 4K, dan game resolusi tinggi.';
+        } elseif ($gamingScore >= 62) {
+            $tierLabel = 'Gaming 1080p/1440p & Desain';
+            $tierTone = 'high';
+            $summary = 'Seimbang untuk game modern di setelan menengah hingga tinggi, desain grafis, serta editing video Full HD.';
+        } elseif ($gamingScore >= 42) {
+            $tierLabel = 'Multitasking & Gaming Ringan';
+            $tierTone = 'mid';
+            $summary = 'Nyaman untuk pekerjaan multitasking, pemrograman, desain 2D, dan game e-sports di resolusi 1080p.';
+        } else {
+            $tierLabel = 'Harian, Kantor & Belajar';
+            $tierTone = 'entry';
+            $summary = 'Cocok untuk pengolahan dokumen, browsing banyak tab, akuntansi, dan penggunaan harian hemat daya.';
+        }
+
+        if (! $ram) {
+            $notes[] = 'Belum memilih RAM: disarankan minimal 16 GB untuk kenyamanan multitasking modern.';
+        } elseif ($ramGb >= 32) {
+            $notes[] = "Kapasitas RAM {$ramGb} GB sangat leluasa untuk editing video, virtualisasi, dan multitasking berat.";
+        }
+
+        if (! $storage) {
+            $notes[] = 'Tambahkan SSD NVMe/SATA agar waktu booting sistem dan buka aplikasi tetap responsif.';
+        }
+
+        return [
+            'ready' => true,
+            'tier_label' => $tierLabel,
+            'tier_tone' => $tierTone,
+            'summary' => $summary,
+            'office_score' => $officeScore,
+            'gaming_score' => $gamingScore,
+            'creator_score' => $creatorScore,
+            'notes' => $notes,
+        ];
+    }
 }

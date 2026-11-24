@@ -330,6 +330,7 @@ class PcBuilderWorkbench extends Component
         $store = StoreSetting::current();
         $selectedParts = $this->resolveSelectedParts();
         $evaluation = $compat->evaluate($selectedParts);
+        $performanceProfile = $compat->evaluatePerformanceProfile($selectedParts);
 
         $assemblyFee = $this->includeAssembly ? (int) $store->default_assembly_fee : 0;
         $grandTotal = $evaluation['parts_subtotal'] + $assemblyFee;
@@ -408,6 +409,7 @@ class PcBuilderWorkbench extends Component
             'slots' => PcCompatibilityService::BUILDER_SLOTS,
             'selectedProducts' => $selectedParts,
             'evaluation' => $evaluation,
+            'performanceProfile' => $performanceProfile,
             'assemblyFee' => $assemblyFee,
             'grandTotal' => $grandTotal,
             'totalCatalogCount' => $totalCatalogCount,

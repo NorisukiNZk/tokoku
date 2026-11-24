@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Category;
+use App\Models\PcCatalogPart;
 use App\Models\Product;
 use App\Models\StoreSetting;
 use Livewire\Attributes\Url;
@@ -130,10 +131,24 @@ class MarketplaceCatalog extends Component
             default => $query->orderByRaw("CASE WHEN availability_status = 'available' THEN 0 ELSE 1 END")->orderByDesc('updated_at'),
         };
 
+        $featuredProduct = Product::query()
+            ->with('category')
+            ->where('show_in_marketplace', true)
+            ->where('availability_status', 'available')
+            ->where('stock', '>', 0)
+            ->orderByRaw("CASE WHEN condition = 'like_new' THEN 0 WHEN condition = 'new' THEN 1 ELSE 2 END")
+            ->orderByDesc('price')
+            ->first()
+            ?? Product::query()->with('category')->where('show_in_marketplace', true)->first();
+
+        $catalogPartsCount = PcCatalogPart::query()->count();
+
         return view('livewire.marketplace-catalog', [
             'store' => StoreSetting::current(),
             'categories' => $categories,
             'products' => $query->paginate(12),
+            'featuredProduct' => $featuredProduct,
+            'catalogPartsCount' => $catalogPartsCount,
         ])->title(StoreSetting::current()->store_name . ' - Etalase Part PC Baru & Bekas');
     }
 }

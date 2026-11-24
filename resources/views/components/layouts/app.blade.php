@@ -11,14 +11,14 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('icons/apple-touch-icon.png') }}">
-    <meta name="theme-color" content="#1D4ED8" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#C2410C" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0B0F19" media="(prefers-color-scheme: dark)">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ $store->store_name }}">
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|plus-jakarta-sans:700,800" rel="stylesheet" />
     <script>
         (function () {
             function applyStoredTheme() {
@@ -48,11 +48,15 @@
                 if (Alpine.store('tokoku')) return;
 
                 var initialSaved = [];
+                var initialCompare = [];
                 try {
                     initialSaved = JSON.parse(localStorage.getItem('tokoku_saved_items') || '[]');
                     if (!Array.isArray(initialSaved)) initialSaved = [];
+                    initialCompare = JSON.parse(localStorage.getItem('tokoku_compare_items') || '[]');
+                    if (!Array.isArray(initialCompare)) initialCompare = [];
                 } catch (e) {
                     initialSaved = [];
+                    initialCompare = [];
                 }
 
                 Alpine.store('tokoku', {
@@ -60,7 +64,9 @@
                     canNativeInstall: Boolean(window.__tokokuInstallEvent),
                     isStandalone: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true,
                     savedItems: initialSaved,
+                    compareItems: initialCompare,
                     savedDrawerOpen: false,
+                    compareModalOpen: false,
                     mobileSheetOpen: false,
                     installGuideOpen: false,
                     toasts: [],
@@ -74,11 +80,15 @@
                         this.isDark = !this.isDark;
                         document.documentElement.classList.toggle('dark', this.isDark);
                         try { localStorage.setItem('tokoku_theme', this.isDark ? 'dark' : 'light'); } catch (e) {}
-                        this.notify(this.isDark ? 'Tampilan gelap diaktifkan' : 'Tampilan terang diaktifkan');
+                        this.notify(this.isDark ? 'Mode gelap aktif' : 'Mode terang aktif');
                     },
 
                     persistSaved() {
                         try { localStorage.setItem('tokoku_saved_items', JSON.stringify(this.savedItems)); } catch (e) {}
+                    },
+
+                    persistCompare() {
+                        try { localStorage.setItem('tokoku_compare_items', JSON.stringify(this.compareItems)); } catch (e) {}
                     },
 
                     isSaved(id) {
@@ -107,6 +117,46 @@
                         this.savedItems = [];
                         this.persistSaved();
                         this.notify('Semua barang tersimpan dikosongkan');
+                    },
+
+                    isCompared(id) {
+                        return this.compareItems.some(function (item) { return item.id === id; });
+                    },
+
+                    toggleCompare(item) {
+                        if (this.isCompared(item.id)) {
+                            this.compareItems = this.compareItems.filter(function (x) { return x.id !== item.id; });
+                            this.persistCompare();
+                            this.notify('Dihapus dari perbandingan');
+                            return;
+                        }
+                        if (this.compareItems.length >= 3) {
+                            this.notify('Maksimal 3 barang dapat dibandingkan sekaligus');
+                            return;
+                        }
+                        this.compareItems = this.compareItems.concat([item]);
+                        this.persistCompare();
+                        this.notify('Ditambahkan ke perbandingan (' + this.compareItems.length + '/3)');
+                    },
+
+                    removeCompare(id) {
+                        this.compareItems = this.compareItems.filter(function (x) { return x.id !== id; });
+                        this.persistCompare();
+                        if (this.compareItems.length === 0) {
+                            this.compareModalOpen = false;
+                        }
+                    },
+
+                    clearCompare() {
+                        this.compareItems = [];
+                        this.compareModalOpen = false;
+                        this.persistCompare();
+                        this.notify('Daftar perbandingan dikosongkan');
+                    },
+
+                    lowestComparePrice() {
+                        if (this.compareItems.length < 2) return null;
+                        return Math.min.apply(null, this.compareItems.map(function (x) { return Number(x.priceNum || 0); }));
                     },
 
                     notify(message) {
@@ -179,6 +229,7 @@
 
                     closeOverlays() {
                         this.savedDrawerOpen = false;
+                        this.compareModalOpen = false;
                         this.mobileSheetOpen = false;
                         this.installGuideOpen = false;
                     }
@@ -213,13 +264,13 @@
                     @if($logoUrl)
                         <img src="{{ $logoUrl }}" alt="{{ $store->store_name }}" class="h-8 sm:h-9 w-auto rounded-lg">
                     @else
-                        <span class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl btn-accent inline-flex items-center justify-center text-sm sm:text-base font-bold shrink-0" aria-hidden="true">
+                        <span class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0F172A] text-[#F8FAFC] border border-[#EA580C] inline-flex items-center justify-center font-display text-sm sm:text-base font-extrabold shrink-0" aria-hidden="true">
                             {{ strtoupper(substr($store->store_name, 0, 1)) }}
                         </span>
                     @endif
                     <div>
-                        <span class="block font-bold text-base sm:text-lg leading-tight tracking-tight">{{ $store->store_name }}</span>
-                        <span class="hidden sm:block text-xs text-muted-ink leading-tight">Marketplace PC, Rakit &amp; Servis</span>
+                        <span class="block font-display font-extrabold text-base sm:text-lg leading-tight tracking-tight">{{ $store->store_name }}</span>
+                        <span class="hidden sm:block text-xs text-muted-ink leading-tight">Hardware Store, Rakit PC &amp; Bengkel</span>
                     </div>
                 </a>
 
@@ -264,7 +315,7 @@
                         type="button"
                         @click="$store.tokoku.savedDrawerOpen = true"
                         aria-label="Buka daftar barang tersimpan"
-                        class="btn-secondary min-h-11 px-3 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer relative"
+                        class="btn-secondary min-h-11 px-3 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
                     >
                         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -313,42 +364,170 @@
         {{ $slot }}
     </main>
 
-    <footer class="surface-card border-x-0 border-b-0 mt-14">
+    <footer class="surface-ink border-x-0 border-b-0 mt-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 md:grid-cols-12 gap-8">
             <div class="md:col-span-6 space-y-3">
-                <p class="font-bold text-lg">{{ $store->store_name }}</p>
-                <p class="text-sm text-muted-ink leading-relaxed max-w-lg">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-lg bg-[#EA580C] text-white font-display font-extrabold text-sm inline-flex items-center justify-center" aria-hidden="true">
+                        {{ strtoupper(substr($store->store_name, 0, 1)) }}
+                    </span>
+                    <p class="font-display font-bold text-lg">{{ $store->store_name }}</p>
+                </div>
+                <p class="text-sm ink-muted leading-relaxed max-w-lg">
                     Toko komponen komputer baru &amp; second bergaransi toko, dilengkapi layanan perawatan suhu, perbaikan perangkat keras, serta jasa perakitan PC rapi sesuai kebutuhan kerja maupun hiburan Anda.
                 </p>
                 @if($store->is_placeholder_data)
-                    <p class="text-xs text-muted-ink pt-1">
-                        Catatan pemilik: Informasi alamat &amp; nomor WhatsApp masih berupa data awal.
-                        <a href="{{ url('/admin/manage-store-settings') }}" class="underline font-semibold text-[var(--text-primary)]">Atur profil toko di Panel Admin</a>.
+                    <p class="text-xs ink-muted pt-1">
+                        Catatan pemilik: Alamat &amp; nomor WhatsApp masih berupa data awal.
+                        <a href="{{ url('/admin/manage-store-settings') }}" class="underline font-semibold text-[#FDBA74]">Atur profil toko di Panel Admin</a>.
                     </p>
                 @endif
             </div>
 
             <div class="md:col-span-3 space-y-2 text-sm">
-                <p class="font-semibold">Informasi Toko</p>
-                <p class="text-muted-ink">{{ $store->workshop_address }}</p>
-                <p class="text-muted-ink">{{ $store->cod_areas }}</p>
-                <p class="text-muted-ink">{{ $store->operating_hours }}</p>
+                <p class="font-display font-bold">Workshop &amp; Jam Buka</p>
+                <p class="ink-muted">{{ $store->workshop_address }}</p>
+                <p class="ink-muted">{{ $store->cod_areas }}</p>
+                <p class="ink-muted">{{ $store->operating_hours }}</p>
             </div>
 
             <div class="md:col-span-3 space-y-2 text-sm">
-                <p class="font-semibold">Akses Cepat</p>
+                <p class="font-display font-bold">Akses Cepat</p>
                 <div class="flex flex-col items-start gap-1">
-                    <a href="{{ route('home') }}" wire:navigate class="text-muted-ink hover:text-[var(--text-primary)] py-1">Katalog Barang</a>
-                    <a href="{{ route('pc-builder') }}" wire:navigate class="text-muted-ink hover:text-[var(--text-primary)] py-1">Simulasi Rakit PC</a>
-                    <a href="{{ route('service.index') }}" wire:navigate class="text-muted-ink hover:text-[var(--text-primary)] py-1">Booking &amp; Cek Servis</a>
+                    <a href="{{ route('home') }}" wire:navigate class="ink-muted hover:text-white py-1">Katalog Barang</a>
+                    <a href="{{ route('pc-builder') }}" wire:navigate class="ink-muted hover:text-white py-1">Simulasi Rakit PC</a>
+                    <a href="{{ route('service.index') }}" wire:navigate class="ink-muted hover:text-white py-1">Booking &amp; Cek Servis</a>
                     <div class="pt-2 flex flex-wrap gap-2">
-                        <a href="{{ url('/admin') }}" class="btn-secondary min-h-11 px-3 rounded-lg text-xs inline-flex items-center">Admin</a>
-                        <a href="{{ url('/teknisi') }}" class="btn-secondary min-h-11 px-3 rounded-lg text-xs inline-flex items-center">Teknisi</a>
+                        <a href="{{ url('/admin') }}" class="btn-ink-outline min-h-11 px-3.5 rounded-lg text-xs inline-flex items-center">Admin</a>
+                        <a href="{{ url('/teknisi') }}" class="btn-ink-outline min-h-11 px-3.5 rounded-lg text-xs inline-flex items-center">Teknisi</a>
                     </div>
                 </div>
             </div>
         </div>
     </footer>
+
+    <div
+        x-show="$store.tokoku.compareItems.length > 0 && !$store.tokoku.compareModalOpen"
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 translate-y-4"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-4"
+        class="compare-float-bar fixed inset-x-0 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 bottom-[calc(3.85rem+env(safe-area-inset-bottom,0px))] md:bottom-5 md:rounded-2xl z-40 px-4 py-3 md:min-w-[30rem] no-print"
+    >
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span class="px-2.5 py-1 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-extrabold text-xs tabular-nums shrink-0" x-text="$store.tokoku.compareItems.length + '/3'"></span>
+                <div class="min-w-0">
+                    <p class="font-semibold text-xs sm:text-sm truncate">Bandingkan Barang Pilihan</p>
+                    <p class="text-[11px] ink-muted truncate" x-text="$store.tokoku.compareItems.map(i => i.name).join(' vs ')"></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" @click="$store.tokoku.compareModalOpen = true" class="btn-ink-accent min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer">
+                    Bandingkan
+                </button>
+                <button type="button" @click="$store.tokoku.clearCompare()" class="btn-ink-outline min-h-11 px-3 rounded-lg text-xs cursor-pointer">
+                    Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div
+        x-show="$store.tokoku.compareModalOpen"
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="judul-bandingkan-barang"
+        class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 no-print"
+        @click.self="$store.tokoku.compareModalOpen = false"
+    >
+        <div class="surface-card rounded-2xl w-full max-w-5xl max-h-[90dvh] flex flex-col overflow-hidden">
+            <div class="p-4 sm:p-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
+                <div>
+                    <h2 id="judul-bandingkan-barang" class="font-display font-bold text-lg">Perbandingan Barang Berdampingan</h2>
+                    <p class="text-xs text-muted-ink">Lihat selisih harga, garansi, kondisi fisik, dan spesifikasi untuk menentukan pilihan paling pas.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="$store.tokoku.clearCompare()" class="btn-secondary min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer">
+                        Kosongkan
+                    </button>
+                    <button type="button" @click="$store.tokoku.compareModalOpen = false" class="btn-accent min-h-11 px-4 rounded-lg text-xs sm:text-sm cursor-pointer">
+                        Tutup (Esc)
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 sm:p-5 overflow-auto flex-1">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <template x-for="item in $store.tokoku.compareItems" :key="item.id">
+                        <div class="surface-subtle rounded-xl p-4 flex flex-col justify-between gap-4">
+                            <div class="space-y-3">
+                                <div class="relative aspect-[4/3] rounded-lg overflow-hidden bg-[#0F172A]">
+                                    <img :src="item.image" alt="" x-show="item.image" class="w-full h-full object-cover">
+                                    <button
+                                        type="button"
+                                        @click="$store.tokoku.removeCompare(item.id)"
+                                        class="btn-secondary min-h-9 px-2.5 rounded-lg text-xs absolute top-2 right-2 cursor-pointer"
+                                    >
+                                        Lepas
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <span
+                                        x-show="$store.tokoku.lowestComparePrice() !== null && Number(item.priceNum) === $store.tokoku.lowestComparePrice()"
+                                        class="badge-ok inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold mb-1.5"
+                                    >
+                                        Harga Paling Hemat
+                                    </span>
+                                    <h3 class="font-display font-bold text-base leading-snug" x-text="item.name"></h3>
+                                    <p class="font-display font-extrabold text-xl tabular-nums mt-1" x-text="item.price"></p>
+                                </div>
+
+                                <dl class="space-y-2 text-xs border-t border-[var(--border-default)] pt-3">
+                                    <div class="flex justify-between gap-2">
+                                        <dt class="text-muted-ink">Kondisi</dt>
+                                        <dd class="font-semibold text-right" x-text="item.condition"></dd>
+                                    </div>
+                                    <div class="flex justify-between gap-2">
+                                        <dt class="text-muted-ink">Negosiasi</dt>
+                                        <dd class="font-semibold text-right" x-text="item.negotiable ? 'Bisa Nego' : 'Harga Nett'"></dd>
+                                    </div>
+                                    <div class="flex justify-between gap-2">
+                                        <dt class="text-muted-ink">Garansi</dt>
+                                        <dd class="font-semibold text-right" x-text="item.warranty || 'Cek di toko'"></dd>
+                                    </div>
+                                    <div class="pt-1 border-t border-[var(--border-default)]">
+                                        <dt class="text-muted-ink mb-1">Spesifikasi Utama</dt>
+                                        <dd class="font-medium" x-text="item.specs || 'Lihat rincian lengkap pada halaman detail'"></dd>
+                                    </div>
+                                </dl>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <a :href="item.url" wire:navigate class="btn-secondary min-h-11 px-3 rounded-lg text-xs inline-flex items-center justify-center">
+                                    Detail
+                                </a>
+                                <a :href="item.waUrl" target="_blank" rel="noopener noreferrer" class="btn-accent min-h-11 px-3 rounded-lg text-xs inline-flex items-center justify-center">
+                                    Chat WA
+                                </a>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <nav aria-label="Navigasi Bawah Seluler" class="bottom-nav-bar md:hidden fixed bottom-0 inset-x-0 z-40">
         <div class="grid grid-cols-4 gap-1 px-2 py-1.5">

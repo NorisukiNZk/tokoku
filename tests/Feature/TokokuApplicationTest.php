@@ -28,7 +28,10 @@ class TokokuApplicationTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
+            ->assertSee('Sorotan Unit Pilihan')
+            ->assertSee('Pilih Kategori Cepat')
             ->assertSee('Pilihan Barang Hari Ini')
+            ->assertSee('Perbandingan Barang Berdampingan')
             ->assertSee('manifest.webmanifest')
             ->assertSee('Navigasi Bawah Seluler')
             ->assertSee('Barang Tersimpan');
@@ -43,9 +46,14 @@ class TokokuApplicationTest extends TestCase
         $product = Product::query()->firstOrFail();
         $this->get('/barang/' . $product->slug)
             ->assertOk()
-            ->assertSee($product->name);
+            ->assertSee($product->name)
+            ->assertSee('Bandingkan');
 
-        $this->get('/rakit-pc')->assertOk()->assertSee('Simulasi Rakit PC');
+        $this->get('/rakit-pc')
+            ->assertOk()
+            ->assertSee('Simulasi Rakit PC')
+            ->assertSee('Diagram Casing PC Interaktif')
+            ->assertSee('Penilai Kelas Performa');
         $this->get('/servis')->assertOk()->assertSee('Layanan Servis');
     }
 
@@ -64,7 +72,9 @@ class TokokuApplicationTest extends TestCase
     public function test_pc_builder_preset_and_saving_share_code_work(): void
     {
         Livewire::test(PcBuilderWorkbench::class)
+            ->assertSee('Menunggu Pilihan Part')
             ->call('applySmartTierPreset', 'budget')
+            ->assertDontSee('Menunggu Pilihan Part')
             ->call('openSlotPicker', 'cpu')
             ->set('pickerTier', 'budget')
             ->call('closeSlotPicker')
