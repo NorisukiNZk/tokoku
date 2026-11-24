@@ -536,6 +536,71 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        ServiceTicket::query()->updateOrCreate(
+            ['ticket_number' => 'SRV-202611-0002'],
+            [
+                'customer_name' => '[SIMULASI] Unit Masuk Baru',
+                'customer_phone' => '081200002222',
+                'device_type' => 'Laptop Gaming / Kerja',
+                'device_brand_model' => 'ASUS ROG Strix G15 (Ryzen 7)',
+                'service_package_id' => $savedPackages['diagnosa-troubleshooting-hardware']->id,
+                'complaint_summary' => 'Laptop menyala indikator lampu tetapi layar gelap, minta dicek RAM atau kabel fleksibel.',
+                'visit_type' => 'walk_in',
+                'preferred_date' => now()->toDateString(),
+                'technician_id' => null,
+                'status' => 'booked',
+                'service_fee' => 75000,
+                'parts_total' => 0,
+                'grand_total' => 75000,
+                'is_sample_data' => true,
+            ]
+        );
+
+        ServiceTicket::query()->updateOrCreate(
+            ['ticket_number' => 'SRV-202611-0003'],
+            [
+                'customer_name' => '[SIMULASI] Konfirmasi Sparepart',
+                'customer_phone' => '081200003333',
+                'customer_address' => 'Data simulasi penjemputan area kota',
+                'device_type' => 'PC Rakitan Desktop',
+                'device_brand_model' => 'Intel Core i5-11400F + PSU 500W',
+                'service_package_id' => $savedPackages['diagnosa-troubleshooting-hardware']->id,
+                'complaint_summary' => 'PC sering mati mendadak saat membuka aplikasi berat.',
+                'visit_type' => 'home_pickup',
+                'preferred_date' => now()->toDateString(),
+                'technician_id' => $tech->id,
+                'status' => 'waiting_approval',
+                'diagnosis_notes' => 'Tegangan jalur 12V PSU lama drop di bawah beban. Disarankan ganti PSU 550W Bronze baru.',
+                'service_fee' => 75000,
+                'parts_total' => 695000,
+                'grand_total' => 770000,
+                'is_sample_data' => true,
+            ]
+        );
+
+        ServiceTicket::query()->updateOrCreate(
+            ['ticket_number' => 'SRV-202611-0004'],
+            [
+                'customer_name' => '[SIMULASI] Siap Diambil',
+                'customer_phone' => '081200004444',
+                'device_type' => 'Laptop Gaming / Kerja',
+                'device_brand_model' => 'Lenovo ThinkPad T14 Gen 2',
+                'service_package_id' => $savedPackages['instalasi-os-driver']->id,
+                'complaint_summary' => 'Instal ulang Windows bersih, driver resmi, dan bersihkan kipas.',
+                'visit_type' => 'walk_in',
+                'preferred_date' => now()->subDay()->toDateString(),
+                'technician_id' => $tech->id,
+                'status' => 'ready',
+                'diagnosis_notes' => 'Instalasi Windows 11, driver chipset, serta pembersihan kipas selesai dan lulus cek.',
+                'temp_before_c' => 84,
+                'temp_after_c' => 61,
+                'service_fee' => 100000,
+                'parts_total' => 0,
+                'grand_total' => 100000,
+                'is_sample_data' => true,
+            ]
+        );
+
         $compat = new PcCompatibilityService();
         $fallbackCatalogSeeds = [
             ['external_key' => 'seed-cpu-budget', 'slot' => 'cpu', 'name' => 'AMD Ryzen 5 5500', 'brand' => 'AMD', 'price_usd' => 84, 'estimated_price_idr' => 1495000, 'price_tier' => 'budget', 'spec_summary' => 'Soket AM4 | 6 Core | 4.2 GHz | Tanpa iGPU', 'compatibility_specs' => ['socket' => 'AM4', 'tdp_watt' => 65, 'has_igpu' => false]],

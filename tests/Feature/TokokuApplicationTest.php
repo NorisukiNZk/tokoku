@@ -102,16 +102,41 @@ class TokokuApplicationTest extends TestCase
         $admin = User::query()->where('email', 'admin@tokoku.local')->firstOrFail();
         $tech = User::query()->where('email', 'teknisi@tokoku.local')->firstOrFail();
 
-        $this->actingAs($admin)->get('/admin')->assertOk();
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Pusat Kendali');
+        $this->actingAs($admin)->get('/admin/papan-bengkel')->assertOk()->assertSee('Papan Antrean Bengkel');
         $this->actingAs($admin)->get('/admin/products')->assertOk();
+        $this->actingAs($admin)->get('/admin/products?activeTab=menipis')->assertOk();
         $this->actingAs($admin)->get('/admin/pc-catalog-parts')->assertOk();
         $this->actingAs($admin)->get('/admin/service-tickets')->assertOk();
         $this->actingAs($admin)->get('/admin/manage-store-settings')->assertOk();
-        $this->actingAs($admin)->get('/teknisi')->assertOk();
+        $this->actingAs($admin)->get('/teknisi')->assertOk()->assertSee('Papan Antrean Bengkel');
+
+        $product = Product::query()->where('stock', '>', 0)->firstOrFail();
+        $initialStock = $product->stock;
+        Livewire::actingAs($admin)
+            ->test(\App\Filament\Pages\AdminDashboard::class)
+            ->call('adjustProductStock', $product->id, 2)
+            ->call('setTicketFilter', 'ready');
+        $this->assertSame($initialStock + 2, $product->fresh()->stock);
 
         $this->flushSession();
-        $this->actingAs($tech)->get('/teknisi')->assertOk();
+        $this->actingAs($tech)->get('/teknisi')->assertOk()->assertSee('Papan Antrean Bengkel');
         $this->actingAs($tech)->get('/teknisi/service-tickets')->assertOk();
         $this->actingAs($tech)->get('/admin')->assertForbidden();
+
+        $unassigned = ServiceTicket::query()->where('ticket_number', 'SRV-202611-0002')->firstOrFail();
+        Livewire::actingAs($tech)
+            ->test(\App\Filament\Teknisi\Pages\WorkshopBoard::class)
+            ->call('claimTicket', $unassigned->id)
+            ->call('openQuickWorkbench', $unassigned->id)
+            ->set('editTempBefore', 89)
+            ->set('editTempAfter', 64)
+            ->set('editDiagnosisNotes', 'Slot RAM dibersihkan dan unit kembali tampil.')
+            ->call('saveQuickWorkbench');
+
+        $unassigned->refresh();
+        $this->assertSame('diagnosing', $unassigned->status);
+        $this->assertSame($tech->id, $unassigned->technician_id);
+        $this->assertSame(64, $unassigned->temp_after_c);
     }
 }

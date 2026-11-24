@@ -2,17 +2,18 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Widgets\WorkshopOperationalOverview;
+use App\Filament\Pages\AdminDashboard;
+use App\Filament\Teknisi\Pages\WorkshopBoard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Navigation\NavigationItem;
-use Filament\Pages;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
+use Filament\Support\Enums\MaxWidth;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -29,29 +30,39 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->spa()
+            ->font('Inter')
             ->brandName('Tokoku Admin')
+            ->brandLogo(fn () => view('filament.components.brand-logo', ['role' => 'Admin Toko']))
+            ->brandLogoHeight('2.4rem')
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth(MaxWidth::Full)
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->colors([
                 'primary' => Color::Blue,
+                'gray' => Color::Slate,
+                'success' => Color::Emerald,
+                'warning' => Color::Amber,
+                'danger' => Color::Rose,
             ])
-            ->navigationItems([
-                NavigationItem::make('Buka Halaman Depan')
-                    ->url('/', shouldOpenInNewTab: true)
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->sort(99),
-                NavigationItem::make('Panel Teknisi')
-                    ->url('/teknisi', shouldOpenInNewTab: true)
-                    ->icon('heroicon-o-wrench-screwdriver')
-                    ->sort(100),
+            ->navigationGroups([
+                NavigationGroup::make('Bengkel & Servis PC'),
+                NavigationGroup::make('Katalog & Rakit PC'),
+                NavigationGroup::make('Pengaturan & Akses'),
             ])
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn () => view('filament.components.custom-panel-styles')
+            )
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn () => view('filament.components.topbar-quick-actions', ['panelId' => 'admin'])
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                Pages\Dashboard::class,
-            ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-            ->widgets([
-                WorkshopOperationalOverview::class,
-                Widgets\AccountWidget::class,
+                AdminDashboard::class,
+                WorkshopBoard::class,
             ])
             ->middleware([
                 EncryptCookies::class,

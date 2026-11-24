@@ -142,4 +142,23 @@ class ServiceTicket extends Model
 
         return strlen($cleanInput) === 4 && $this->phoneLastFour() === $cleanInput;
     }
+
+    public function customerWhatsappUrl(?string $customMessage = null): string
+    {
+        $digits = preg_replace('/\D+/', '', $this->customer_phone ?? '') ?: '';
+        if (str_starts_with($digits, '0')) {
+            $digits = '62' . substr($digits, 1);
+        }
+
+        $trackingUrl = url('/servis?tiket=' . $this->ticket_number . '&pin=' . $this->phoneLastFour());
+        $totalFormatted = 'Rp ' . number_format((int) $this->grand_total, 0, ',', '.');
+
+        $message = $customMessage ?? match ($this->status) {
+            'waiting_approval' => "Halo {$this->customer_name}, hasil diagnosa unit {$this->device_brand_model} (Tiket {$this->ticket_number}): {$this->diagnosis_notes}\nEstimasi total biaya: {$totalFormatted}.\nMohon konfirmasi apakah pengerjaan dapat kami lanjutkan. Lacak detail: {$trackingUrl}",
+            'ready' => "Halo {$this->customer_name}, perangkat {$this->device_brand_model} (Tiket {$this->ticket_number}) sudah selesai uji QC dan siap diambil.\nTotal biaya: {$totalFormatted}.\nRincian lengkap: {$trackingUrl}",
+            default => "Halo {$this->customer_name}, pembaruan tiket servis {$this->ticket_number} ({$this->device_brand_model}): status saat ini {$this->statusLabel()}.\nPantau progres: {$trackingUrl}",
+        };
+
+        return 'https://wa.me/' . $digits . '?text=' . rawurlencode($message);
+    }
 }

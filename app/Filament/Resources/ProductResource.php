@@ -21,6 +21,26 @@ class ProductResource extends Resource
     protected static ?string $navigationLabel = 'Barang & Komponen PC';
     protected static ?string $modelLabel = 'Barang / Komponen';
     protected static ?int $navigationSort = 1;
+    protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'sku', 'brand'];
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return [
+            'SKU' => $record->sku,
+            'Harga' => $record->formattedPrice(),
+            'Stok' => $record->stock . ' unit (' . $record->availabilityLabel() . ')',
+        ];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) Product::query()->where('availability_status', 'available')->where('stock', '>', 0)->count();
+    }
 
     public static function getNavigationIcon(): string
     {
@@ -238,9 +258,8 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Stok & Status')
                     ->formatStateUsing(fn (Product $record): string => $record->stock . ' unit (' . $record->availabilityLabel() . ')'),
-                Tables\Columns\IconColumn::make('show_in_pc_builder')
-                    ->label('Rakit PC')
-                    ->boolean(),
+                Tables\Columns\ToggleColumn::make('show_in_marketplace')
+                    ->label('Tayang'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
@@ -254,6 +273,23 @@ class ProductResource extends Resource
                     ->options(Product::AVAILABILITY_STATUSES),
             ])
             ->actions([
+                Tables\Actions\Action::make('quick_stock_price')
+                    ->label('Harga & Stok')
+                    ->icon('heroicon-o-adjustments-horizontal')
+                    ->slideOver()
+                    ->fillForm(fn (Product $record) => [
+                        'price' => $record->price,
+                        'stock' => $record->stock,
+                        'is_negotiable' => $record->is_negotiable,
+                        'availability_status' => $record->availability_status,
+                    ])
+                    ->form([
+                        Forms\Components\TextInput::make('price')->label('Harga Jual (Rp)')->numeric()->prefix('Rp')->required(),
+                        Forms\Components\TextInput::make('stock')->label('Stok Fisik')->numeric()->required(),
+                        Forms\Components\Toggle::make('is_negotiable')->label('Harga Bisa Nego'),
+                        Forms\Components\Select::make('availability_status')->label('Status Lapak')->options(Product::AVAILABILITY_STATUSES)->required(),
+                    ])
+                    ->action(fn (Product $record, array $data) => $record->update($data)),
                 Tables\Actions\Action::make('toggle_sold')
                     ->label(fn (Product $record) => $record->availability_status === 'sold' ? 'Tayangkan Lagi' : 'Tandai Terjual')
                     ->icon('heroicon-o-check-badge')

@@ -25,6 +25,35 @@ class ServiceTicketResource extends Resource
     protected static ?string $navigationLabel = 'Tiket Servis & Perawatan';
     protected static ?string $modelLabel = 'Tiket Servis';
     protected static ?int $navigationSort = 10;
+    protected static ?string $recordTitleAttribute = 'ticket_number';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['ticket_number', 'customer_name', 'customer_phone', 'device_brand_model'];
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return [
+            'Pelanggan' => $record->customer_name,
+            'Perangkat' => $record->device_brand_model,
+            'Status' => $record->statusLabel(),
+        ];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $active = ServiceTicket::query()
+            ->whereIn('status', ['booked', 'diagnosing', 'waiting_approval', 'in_progress', 'testing_qc', 'ready'])
+            ->count();
+
+        return $active > 0 ? (string) $active : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return ServiceTicket::query()->where('status', 'waiting_approval')->exists() ? 'danger' : 'primary';
+    }
 
     public static function form(Form $form): Form
     {
@@ -182,10 +211,16 @@ class ServiceTicketResource extends Resource
                     ->options(ServiceTicket::STATUSES),
             ])
             ->actions([
+                Tables\Actions\Action::make('whatsapp_customer')
+                    ->label('Chat WA')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('success')
+                    ->url(fn (ServiceTicket $record) => $record->customerWhatsappUrl(), shouldOpenInNewTab: true),
                 Tables\Actions\Action::make('quick_progress')
                     ->label('Update Progres')
                     ->icon('heroicon-o-arrow-path')
                     ->color('primary')
+                    ->slideOver()
                     ->fillForm(fn (ServiceTicket $record) => [
                         'status' => $record->status,
                         'temp_after_c' => $record->temp_after_c,
