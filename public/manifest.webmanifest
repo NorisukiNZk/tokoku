@@ -1,0 +1,54 @@
+{
+    "id": "/",
+    "name": "Tokoku - Marketplace PC, Rakit & Servis",
+    "short_name": "Tokoku",
+    "description": "Etalase part PC baru dan second, simulasi rakit PC ribuan komponen, serta booking dan lacak tiket servis bengkel.",
+    "lang": "id",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#F4F6F9",
+    "theme_color": "#1D4ED8",
+    "categories": ["shopping", "utilities"],
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Simulasi Rakit PC",
+            "short_name": "Rakit PC",
+            "url": "/rakit-pc",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+        },
+        {
+            "name": "Cek Resi Servis",
+            "short_name": "Cek Servis",
+            "url": "/servis?tab=tracking",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+        }
+    ]
+}

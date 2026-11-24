@@ -21,8 +21,8 @@ Aplikasi web terpadu untuk toko perangkat keras komputer yang menggabungkan etal
    - **Panel Admin (`/admin`)**: Kelola stok produk & komponen rakitan, kategori, daftar paket servis, simulasi rakitan tersimpan, akun staf, serta pengaturan kontak & identitas toko.
    - **Panel Teknisi (`/teknisi`)**: Ruang kerja khusus teknisi untuk memproses antrean servis, mencatat diagnosa dan suhu pengujian, menambahkan pemakaian sparepart, serta memperbarui log progres pelanggan.
 
-5. **Antarmuka Responsif (Mode Terang & Gelap)**
-   - Menggunakan tipografi `Inter` dan sistem warna berstandar kontras aksesibilitas WCAG AA dengan pengalih tema Terang dan Gelap.
+5. **Siap Dipasang di HP (PWA + Navigasi Bawah Seluler) & Mode Terang/Gelap**
+   - Dilengkapi `manifest.webmanifest`, *service worker* (`/sw.js`), halaman cadangan offline (`/offline.html`), ikon aplikasi Android & iPhone, tombol **Pasang di HP**, serta *Bottom Navigation Bar* khusus layar seluler dengan tipografi `Inter` dan kontras aksesibilitas WCAG AA.
 
 ## Teknologi yang Digunakan
 

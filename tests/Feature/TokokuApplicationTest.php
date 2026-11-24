@@ -26,7 +26,18 @@ class TokokuApplicationTest extends TestCase
 
     public function test_public_storefront_pages_render_cleanly(): void
     {
-        $this->get('/')->assertOk()->assertSee('Pilihan Barang Hari Ini');
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Pilihan Barang Hari Ini')
+            ->assertSee('manifest.webmanifest')
+            ->assertSee('Navigasi Bawah Seluler');
+
+        $this->assertFileExists(public_path('manifest.webmanifest'));
+        $this->assertFileExists(public_path('sw.js'));
+        $this->assertFileExists(public_path('offline.html'));
+        $this->assertFileExists(public_path('icons/icon-192.png'));
+        $this->assertFileExists(public_path('icons/icon-512.png'));
+        $this->assertFileExists(public_path('icons/apple-touch-icon.png'));
 
         $product = Product::query()->firstOrFail();
         $this->get('/barang/' . $product->slug)

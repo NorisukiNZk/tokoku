@@ -194,14 +194,39 @@ summary:focus-visible,
     outline-offset: 2px;
 }
 
+input,
+select,
+textarea {
+    scroll-margin-bottom: 6.5rem;
+    scroll-margin-top: 5rem;
+}
+
+.bottom-nav-bar {
+    background-color: var(--bg-surface);
+    border-top: 1px solid var(--border-default);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 767px) {
+    html {
+        scroll-padding-bottom: 5.5rem;
+    }
+
+    body {
+        padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
 @media print {
     header,
     footer,
+    .bottom-nav-bar,
     .no-print {
         display: none !important;
     }
     body {
         background: #FFFFFF !important;
         color: #000000 !important;
+        padding-bottom: 0 !important;
     }
 }
