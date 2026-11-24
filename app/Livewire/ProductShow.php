@@ -32,7 +32,7 @@ class ProductShow extends Component
             ->merge(collect($this->product->gallery_images ?? [])->map(
                 fn ($img) => str_starts_with($img, 'http') || str_starts_with($img, '/')
                     ? $img
-                    : \Illuminate\Support\Facades\Storage::disk('public')->url($img)
+                    : '/storage/' . ltrim($img, '/')
             ))
             ->filter()
             ->unique()

@@ -37,7 +37,9 @@
     --status-err-fg: #991B1B;
     --status-err-border: #F87171;
     --card-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05);
-    --card-shadow-hover: 0 6px 18px -4px rgba(15, 23, 42, 0.09);
+    --card-shadow-hover: 0 10px 24px -8px rgba(15, 23, 42, 0.12);
+    --skeleton-base: #E2E8F0;
+    --skeleton-shine: #F1F5F9;
 }
 
 html.dark {
@@ -65,7 +67,9 @@ html.dark {
     --status-err-fg: #FECACA;
     --status-err-border: #EF4444;
     --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
-    --card-shadow-hover: 0 8px 20px -4px rgba(0, 0, 0, 0.4);
+    --card-shadow-hover: 0 12px 26px -8px rgba(0, 0, 0, 0.48);
+    --skeleton-base: #273549;
+    --skeleton-shine: #334155;
 }
 
 [x-cloak] {
@@ -95,12 +99,21 @@ body {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-default);
     box-shadow: var(--card-shadow);
-    transition: border-color 160ms ease, box-shadow 160ms ease;
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 .product-card:hover {
     border-color: var(--accent-soft-border);
     box-shadow: var(--card-shadow-hover);
+    transform: translateY(-2px);
+}
+
+.product-card img {
+    transition: transform 240ms ease;
+}
+
+.product-card:hover img {
+    transform: scale(1.025);
 }
 
 .surface-subtle {
@@ -117,11 +130,17 @@ body {
     color: var(--accent-fg);
     border: 1px solid transparent;
     font-weight: 600;
-    transition: background-color 150ms ease;
+    transition: background-color 150ms ease, transform 120ms ease;
 }
 
 .btn-accent:hover {
     background-color: var(--accent-hover);
+}
+
+.btn-accent:active,
+.btn-secondary:active,
+.btn-ghost-active:active {
+    transform: scale(0.98);
 }
 
 .btn-secondary {
@@ -129,7 +148,7 @@ body {
     color: var(--text-primary);
     border: 1px solid var(--border-control);
     font-weight: 500;
-    transition: background-color 150ms ease, border-color 150ms ease;
+    transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
 }
 
 .btn-secondary:hover {
@@ -141,6 +160,7 @@ body {
     color: var(--accent-soft-fg);
     border: 1px solid var(--accent-soft-border);
     font-weight: 600;
+    transition: background-color 150ms ease, transform 120ms ease;
 }
 
 .input-field {
@@ -183,6 +203,23 @@ body {
     border: 1px solid var(--status-err-border);
 }
 
+.skeleton-block {
+    background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-shine) 50%, var(--skeleton-base) 75%);
+    background-size: 200% 100%;
+    animation: tk-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes tk-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.toast-item {
+    background-color: var(--text-primary);
+    color: var(--bg-surface);
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
+}
+
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
@@ -207,6 +244,13 @@ textarea {
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.mobile-builder-bar {
+    background-color: var(--bg-surface);
+    border-top: 1px solid var(--border-default);
+    bottom: calc(3.85rem + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -6px 16px -6px rgba(15, 23, 42, 0.12);
+}
+
 @media (max-width: 767px) {
     html {
         scroll-padding-bottom: 5.5rem;
@@ -217,10 +261,27 @@ textarea {
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .product-card:hover,
+    .product-card:hover img {
+        transform: none;
+    }
+}
+
 @media print {
     header,
     footer,
     .bottom-nav-bar,
+    .mobile-builder-bar,
     .no-print {
         display: none !important;
     }

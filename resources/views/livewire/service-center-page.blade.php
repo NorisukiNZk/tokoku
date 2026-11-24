@@ -38,7 +38,7 @@
             <p class="text-sm">
                 Catat nomor tiket tersebut beserta 4 digit akhir WhatsApp Anda (<strong>{{ $createdTicket->phoneLastFour() }}</strong>) untuk memantau progres kapan saja.
             </p>
-            <div class="pt-1">
+            <div class="pt-1 flex flex-wrap gap-2">
                 <a
                     href="{{ $store->whatsappUrl("Halo Admin {$store->store_name}, saya sudah mendaftar jadwal servis:\nNo Tiket: {$createdTicket->ticket_number}\nPerangkat: {$createdTicket->device_brand_model}\nJadwal: " . optional($createdTicket->preferred_date)->format('d M Y')) }}"
                     target="_blank"
@@ -47,6 +47,13 @@
                 >
                     Konfirmasi Jadwal via WhatsApp
                 </a>
+                <button
+                    type="button"
+                    @click="$store.tokoku.copyText(@js($createdTicket->ticket_number), 'Nomor tiket ' + @js($createdTicket->ticket_number) + ' disalin')"
+                    class="btn-secondary min-h-11 px-4 rounded-lg text-sm cursor-pointer"
+                >
+                    Salin No. Tiket
+                </button>
             </div>
         </div>
     @endif
@@ -330,7 +337,7 @@
                             @endif
                         </div>
 
-                        <div>
+                        <div class="flex flex-wrap gap-2">
                             <a
                                 href="{{ $store->whatsappUrl('Halo Admin ' . $store->store_name . ', saya ingin menanyakan tiket servis nomor ' . $trackedTicket->ticket_number . ' (' . $trackedTicket->device_brand_model . ').') }}"
                                 target="_blank"
@@ -339,6 +346,13 @@
                             >
                                 Hubungi Teknisi via WhatsApp
                             </a>
+                            <button
+                                type="button"
+                                @click="$store.tokoku.copyText(@js(route('service.index', ['tiket' => $trackedTicket->ticket_number, 'pin' => $trackedTicket->phoneLastFour()])), 'Tautan lacak resi ' + @js($trackedTicket->ticket_number) + ' disalin')"
+                                class="btn-secondary min-h-11 px-4 rounded-lg text-sm cursor-pointer"
+                            >
+                                Salin Link Lacak
+                            </button>
                         </div>
                     </div>
                 @else

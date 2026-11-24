@@ -33,7 +33,8 @@ Seluruh pasangan warna diuji memenuhi kontras WCAG AA di Mode Terang maupun Mode
 - **Aksen Lembut**: `#1E3A5F` dengan teks `#BFDBFE` dan tepi `#3B82F6`
 
 ## Tata Letak & Dials
-- `Dial: ENERGY 2 / RHYTHM 2 / MOTION 1`
+- `Dial: ENERGY 2 / RHYTHM 2 / MOTION 2`
+- **Alasan Gerak (`MOTION 2`)**: Seluruh gerak bersifat fungsional (bukan hiasan berulang): perpindahan antarhalaman menggunakan `wire:navigate` untuk menghilangkan kedip layar putih; dialog, laci barang tersimpan, dan *bottom sheet* seluler menggunakan transisi buka-tutup halus 180ms untuk menjaga arah spasial; *skeleton card* muncul hanya saat Livewire sedang menyaring katalog; dan seluruh transisi menghormati `prefers-reduced-motion: reduce`.
 - **Etalase (`/`)**: Tata letak dua kolom ala Facebook Marketplace (Sidebar filter di kiri pada layar lebar, panel filter lipat di ponsel agar foto barang langsung terlihat di atas) dan kartu produk bersih berfokus pada foto, harga, serta 1 baris info inti.
 - **Rakit PC (`/rakit-pc`)**: Alur bertahap bernomor dengan bilah kelengkapan komponen dan pilihan paket awal sekali klik bagi pemula.
 - **Servis (`/servis`)**: Terbagi rapi menjadi 2 tab fokus (*Booking & Kisaran Biaya* serta *Lacak Status Servis*) sehingga halaman tidak memanjang berlebihan.

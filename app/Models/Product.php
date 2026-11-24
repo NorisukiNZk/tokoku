@@ -101,7 +101,7 @@ class Product extends Model
             return $this->primary_image;
         }
 
-        return Storage::disk('public')->url($this->primary_image);
+        return '/storage/' . ltrim($this->primary_image, '/');
     }
 
     public function specSummaryBadges(): array

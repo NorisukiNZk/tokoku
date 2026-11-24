@@ -30,7 +30,8 @@ class TokokuApplicationTest extends TestCase
             ->assertOk()
             ->assertSee('Pilihan Barang Hari Ini')
             ->assertSee('manifest.webmanifest')
-            ->assertSee('Navigasi Bawah Seluler');
+            ->assertSee('Navigasi Bawah Seluler')
+            ->assertSee('Barang Tersimpan');
 
         $this->assertFileExists(public_path('manifest.webmanifest'));
         $this->assertFileExists(public_path('sw.js'));

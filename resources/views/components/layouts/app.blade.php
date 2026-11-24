@@ -1,5 +1,6 @@
 @php
     $store = \App\Models\StoreSetting::current();
+    $logoUrl = $store->logo_path ? '/storage/' . ltrim($store->logo_path, '/') : null;
 @endphp
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth">
@@ -20,61 +21,185 @@
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
     <script>
         (function () {
-            try {
-                var saved = localStorage.getItem('tokoku_theme');
-                if (saved === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else if (saved === 'light') {
-                    document.documentElement.classList.remove('dark');
-                }
-            } catch (e) {}
-        })();
+            function applyStoredTheme() {
+                try {
+                    var saved = localStorage.getItem('tokoku_theme');
+                    document.documentElement.classList.toggle('dark', saved === 'dark');
+                } catch (e) {}
+            }
 
-        window.__tokokuInstallEvent = null;
-        window.addEventListener('beforeinstallprompt', function (event) {
-            event.preventDefault();
-            window.__tokokuInstallEvent = event;
-            window.dispatchEvent(new CustomEvent('tokoku-install-ready'));
-        });
+            applyStoredTheme();
+            document.addEventListener('livewire:navigated', applyStoredTheme);
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js').catch(function () {});
+            window.__tokokuInstallEvent = null;
+            window.addEventListener('beforeinstallprompt', function (event) {
+                event.preventDefault();
+                window.__tokokuInstallEvent = event;
+                window.dispatchEvent(new CustomEvent('tokoku-install-ready'));
             });
-        }
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('/sw.js').catch(function () {});
+                });
+            }
+
+            document.addEventListener('alpine:init', function () {
+                if (Alpine.store('tokoku')) return;
+
+                var initialSaved = [];
+                try {
+                    initialSaved = JSON.parse(localStorage.getItem('tokoku_saved_items') || '[]');
+                    if (!Array.isArray(initialSaved)) initialSaved = [];
+                } catch (e) {
+                    initialSaved = [];
+                }
+
+                Alpine.store('tokoku', {
+                    isDark: document.documentElement.classList.contains('dark'),
+                    canNativeInstall: Boolean(window.__tokokuInstallEvent),
+                    isStandalone: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true,
+                    savedItems: initialSaved,
+                    savedDrawerOpen: false,
+                    mobileSheetOpen: false,
+                    installGuideOpen: false,
+                    toasts: [],
+                    nextToastId: 1,
+
+                    syncTheme() {
+                        this.isDark = document.documentElement.classList.contains('dark');
+                    },
+
+                    toggleTheme() {
+                        this.isDark = !this.isDark;
+                        document.documentElement.classList.toggle('dark', this.isDark);
+                        try { localStorage.setItem('tokoku_theme', this.isDark ? 'dark' : 'light'); } catch (e) {}
+                        this.notify(this.isDark ? 'Tampilan gelap diaktifkan' : 'Tampilan terang diaktifkan');
+                    },
+
+                    persistSaved() {
+                        try { localStorage.setItem('tokoku_saved_items', JSON.stringify(this.savedItems)); } catch (e) {}
+                    },
+
+                    isSaved(id) {
+                        return this.savedItems.some(function (item) { return item.id === id; });
+                    },
+
+                    toggleSaved(item) {
+                        if (this.isSaved(item.id)) {
+                            this.savedItems = this.savedItems.filter(function (x) { return x.id !== item.id; });
+                            this.persistSaved();
+                            this.notify('Dihapus dari daftar barang tersimpan');
+                        } else {
+                            this.savedItems = [item].concat(this.savedItems);
+                            this.persistSaved();
+                            this.notify('Barang disimpan ke daftar favorit');
+                        }
+                    },
+
+                    removeSaved(id) {
+                        this.savedItems = this.savedItems.filter(function (x) { return x.id !== id; });
+                        this.persistSaved();
+                        this.notify('Barang dihapus dari daftar tersimpan');
+                    },
+
+                    clearSaved() {
+                        this.savedItems = [];
+                        this.persistSaved();
+                        this.notify('Semua barang tersimpan dikosongkan');
+                    },
+
+                    notify(message) {
+                        var id = this.nextToastId++;
+                        this.toasts.push({ id: id, message: message });
+                        var self = this;
+                        setTimeout(function () {
+                            self.toasts = self.toasts.filter(function (t) { return t.id !== id; });
+                        }, 2600);
+                    },
+
+                    copyText(text, successMsg) {
+                        var msg = successMsg || 'Berhasil disalin ke papan klip';
+                        var self = this;
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(text).then(function () {
+                                self.notify(msg);
+                            }).catch(function () {
+                                self.fallbackCopy(text, msg);
+                            });
+                            return;
+                        }
+                        this.fallbackCopy(text, msg);
+                    },
+
+                    fallbackCopy(text, msg) {
+                        try {
+                            var ta = document.createElement('textarea');
+                            ta.value = text;
+                            ta.setAttribute('readonly', '');
+                            ta.style.position = 'fixed';
+                            ta.style.opacity = '0';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            this.notify(msg);
+                        } catch (e) {
+                            this.notify('Salin manual: ' + text);
+                        }
+                    },
+
+                    async shareLink(title, text, url) {
+                        if (navigator.share) {
+                            try {
+                                await navigator.share({ title: title, text: text, url: url });
+                                return;
+                            } catch (e) {
+                                if (e && e.name === 'AbortError') return;
+                            }
+                        }
+                        this.copyText(url, 'Tautan halaman disalin, siap dibagikan');
+                    },
+
+                    async triggerInstall() {
+                        if (window.__tokokuInstallEvent) {
+                            window.__tokokuInstallEvent.prompt();
+                            var outcome = await window.__tokokuInstallEvent.userChoice;
+                            if (outcome && outcome.outcome === 'accepted') {
+                                this.isStandalone = true;
+                                this.notify('Tokoku terpasang di perangkat Anda');
+                            }
+                            window.__tokokuInstallEvent = null;
+                            this.canNativeInstall = false;
+                            return;
+                        }
+                        this.mobileSheetOpen = false;
+                        this.installGuideOpen = true;
+                    },
+
+                    closeOverlays() {
+                        this.savedDrawerOpen = false;
+                        this.mobileSheetOpen = false;
+                        this.installGuideOpen = false;
+                    }
+                });
+            });
+
+            document.addEventListener('livewire:navigated', function () {
+                if (window.Alpine && Alpine.store('tokoku')) {
+                    Alpine.store('tokoku').syncTheme();
+                    Alpine.store('tokoku').closeOverlays();
+                }
+            });
+        })();
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
 <body
-    x-data="{
-        mobileSheetOpen: false,
-        installGuideOpen: false,
-        isDark: document.documentElement.classList.contains('dark'),
-        canNativeInstall: Boolean(window.__tokokuInstallEvent),
-        isStandalone: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true,
-        toggleTheme() {
-            this.isDark = !this.isDark;
-            document.documentElement.classList.toggle('dark', this.isDark);
-            try { localStorage.setItem('tokoku_theme', this.isDark ? 'dark' : 'light'); } catch (e) {}
-        },
-        async triggerInstall() {
-            if (window.__tokokuInstallEvent) {
-                window.__tokokuInstallEvent.prompt();
-                var outcome = await window.__tokokuInstallEvent.userChoice;
-                if (outcome && outcome.outcome === 'accepted') {
-                    this.isStandalone = true;
-                }
-                window.__tokokuInstallEvent = null;
-                this.canNativeInstall = false;
-                return;
-            }
-            this.mobileSheetOpen = false;
-            this.installGuideOpen = true;
-        }
-    }"
-    @tokoku-install-ready.window="canNativeInstall = true"
-    @keydown.escape.window="mobileSheetOpen = false; installGuideOpen = false"
+    x-data
+    @tokoku-install-ready.window="$store.tokoku.canNativeInstall = true"
+    @keydown.escape.window="$store.tokoku.closeOverlays()"
     class="min-h-screen flex flex-col antialiased"
 >
     <a href="#konten-utama" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 btn-accent px-4 py-2.5 rounded-lg text-sm">
@@ -83,10 +208,10 @@
 
     <header class="surface-card border-x-0 border-t-0 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between gap-3 h-14 sm:h-[68px]">
-                <a href="{{ route('home') }}" class="flex items-center gap-2.5 sm:gap-3 min-h-11 pr-2">
-                    @if($store->logo_path)
-                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($store->logo_path) }}" alt="{{ $store->store_name }}" class="h-8 sm:h-9 w-auto rounded-lg">
+            <div class="flex items-center justify-between gap-2 sm:gap-3 h-14 sm:h-[68px]">
+                <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2.5 sm:gap-3 min-h-11 pr-2">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $store->store_name }}" class="h-8 sm:h-9 w-auto rounded-lg">
                     @else
                         <span class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl btn-accent inline-flex items-center justify-center text-sm sm:text-base font-bold shrink-0" aria-hidden="true">
                             {{ strtoupper(substr($store->store_name, 0, 1)) }}
@@ -101,6 +226,7 @@
                 <nav aria-label="Menu Utama" class="hidden md:flex items-center gap-1.5">
                     <a
                         href="{{ route('home') }}"
+                        wire:navigate
                         @if(request()->routeIs('home') || request()->routeIs('product.show')) aria-current="page" @endif
                         class="min-h-11 inline-flex items-center gap-2 px-4 rounded-lg text-sm transition-colors {{ request()->routeIs('home') || request()->routeIs('product.show') ? 'btn-ghost-active' : 'text-muted-ink hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] font-medium' }}"
                     >
@@ -111,6 +237,7 @@
                     </a>
                     <a
                         href="{{ route('pc-builder') }}"
+                        wire:navigate
                         @if(request()->routeIs('pc-builder')) aria-current="page" @endif
                         class="min-h-11 inline-flex items-center gap-2 px-4 rounded-lg text-sm transition-colors {{ request()->routeIs('pc-builder') ? 'btn-ghost-active' : 'text-muted-ink hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] font-medium' }}"
                     >
@@ -121,6 +248,7 @@
                     </a>
                     <a
                         href="{{ route('service.index') }}"
+                        wire:navigate
                         @if(request()->routeIs('service.index')) aria-current="page" @endif
                         class="min-h-11 inline-flex items-center gap-2 px-4 rounded-lg text-sm transition-colors {{ request()->routeIs('service.index') ? 'btn-ghost-active' : 'text-muted-ink hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] font-medium' }}"
                     >
@@ -131,12 +259,30 @@
                     </a>
                 </nav>
 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5 sm:gap-2">
                     <button
                         type="button"
-                        x-show="!isStandalone"
-                        @click="triggerInstall()"
-                        class="btn-ghost-active min-h-11 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
+                        @click="$store.tokoku.savedDrawerOpen = true"
+                        aria-label="Buka daftar barang tersimpan"
+                        class="btn-secondary min-h-11 px-3 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer relative"
+                    >
+                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                        <span class="hidden lg:inline">Tersimpan</span>
+                        <span
+                            x-show="$store.tokoku.savedItems.length > 0"
+                            x-cloak
+                            x-text="$store.tokoku.savedItems.length"
+                            class="badge-accent-soft px-1.5 py-0.5 rounded text-[11px] font-bold tabular-nums leading-none"
+                        ></span>
+                    </button>
+
+                    <button
+                        type="button"
+                        x-show="!$store.tokoku.isStandalone"
+                        @click="$store.tokoku.triggerInstall()"
+                        class="hidden sm:inline-flex btn-ghost-active min-h-11 px-3.5 rounded-lg text-xs sm:text-sm items-center gap-1.5 cursor-pointer"
                     >
                         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 12l-4-4m4 4l4-4M4 20h16" />
@@ -146,17 +292,17 @@
 
                     <button
                         type="button"
-                        @click="toggleTheme()"
-                        :aria-label="isDark ? 'Ganti ke tampilan terang' : 'Ganti ke tampilan gelap'"
-                        class="btn-secondary min-h-11 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
+                        @click="$store.tokoku.toggleTheme()"
+                        :aria-label="$store.tokoku.isDark ? 'Ganti ke tampilan terang' : 'Ganti ke tampilan gelap'"
+                        class="btn-secondary min-h-11 px-3 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
                     >
-                        <svg x-show="!isDark" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <svg x-show="!$store.tokoku.isDark" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" />
                         </svg>
-                        <svg x-show="isDark" x-cloak class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <svg x-show="$store.tokoku.isDark" x-cloak class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M7.05 16.95l-1.414 1.414m12.728 0l-1.414-1.414M7.05 7.05L5.636 5.636M12 8a4 4 0 100 8 4 4 0 000-8z" />
                         </svg>
-                        <span class="hidden sm:inline" x-text="isDark ? 'Terang' : 'Gelap'">Gelap</span>
+                        <span class="hidden sm:inline" x-text="$store.tokoku.isDark ? 'Terang' : 'Gelap'">Gelap</span>
                     </button>
                 </div>
             </div>
@@ -192,9 +338,9 @@
             <div class="md:col-span-3 space-y-2 text-sm">
                 <p class="font-semibold">Akses Cepat</p>
                 <div class="flex flex-col items-start gap-1">
-                    <a href="{{ route('home') }}" class="text-muted-ink hover:text-[var(--text-primary)] py-1">Katalog Barang</a>
-                    <a href="{{ route('pc-builder') }}" class="text-muted-ink hover:text-[var(--text-primary)] py-1">Simulasi Rakit PC</a>
-                    <a href="{{ route('service.index') }}" class="text-muted-ink hover:text-[var(--text-primary)] py-1">Booking &amp; Cek Servis</a>
+                    <a href="{{ route('home') }}" wire:navigate class="text-muted-ink hover:text-[var(--text-primary)] py-1">Katalog Barang</a>
+                    <a href="{{ route('pc-builder') }}" wire:navigate class="text-muted-ink hover:text-[var(--text-primary)] py-1">Simulasi Rakit PC</a>
+                    <a href="{{ route('service.index') }}" wire:navigate class="text-muted-ink hover:text-[var(--text-primary)] py-1">Booking &amp; Cek Servis</a>
                     <div class="pt-2 flex flex-wrap gap-2">
                         <a href="{{ url('/admin') }}" class="btn-secondary min-h-11 px-3 rounded-lg text-xs inline-flex items-center">Admin</a>
                         <a href="{{ url('/teknisi') }}" class="btn-secondary min-h-11 px-3 rounded-lg text-xs inline-flex items-center">Teknisi</a>
@@ -208,6 +354,7 @@
         <div class="grid grid-cols-4 gap-1 px-2 py-1.5">
             <a
                 href="{{ route('home') }}"
+                wire:navigate
                 @if(request()->routeIs('home') || request()->routeIs('product.show')) aria-current="page" @endif
                 class="min-h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 text-[11px] {{ request()->routeIs('home') || request()->routeIs('product.show') ? 'btn-ghost-active' : 'text-muted-ink font-medium' }}"
             >
@@ -219,6 +366,7 @@
 
             <a
                 href="{{ route('pc-builder') }}"
+                wire:navigate
                 @if(request()->routeIs('pc-builder')) aria-current="page" @endif
                 class="min-h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 text-[11px] {{ request()->routeIs('pc-builder') ? 'btn-ghost-active' : 'text-muted-ink font-medium' }}"
             >
@@ -230,6 +378,7 @@
 
             <a
                 href="{{ route('service.index') }}"
+                wire:navigate
                 @if(request()->routeIs('service.index')) aria-current="page" @endif
                 class="min-h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 text-[11px] {{ request()->routeIs('service.index') ? 'btn-ghost-active' : 'text-muted-ink font-medium' }}"
             >
@@ -241,11 +390,11 @@
 
             <button
                 type="button"
-                @click="mobileSheetOpen = !mobileSheetOpen"
-                :aria-expanded="mobileSheetOpen.toString()"
+                @click="$store.tokoku.mobileSheetOpen = !$store.tokoku.mobileSheetOpen"
+                :aria-expanded="$store.tokoku.mobileSheetOpen.toString()"
                 aria-controls="sheet-menu-seluler"
                 class="min-h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 text-[11px] cursor-pointer"
-                :class="mobileSheetOpen ? 'btn-ghost-active' : 'text-muted-ink font-medium'"
+                :class="$store.tokoku.mobileSheetOpen ? 'btn-ghost-active' : 'text-muted-ink font-medium'"
             >
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -256,19 +405,110 @@
     </nav>
 
     <div
-        id="sheet-menu-seluler"
-        x-show="mobileSheetOpen"
+        x-show="$store.tokoku.savedDrawerOpen"
         x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="judul-barang-tersimpan"
+        class="fixed inset-0 z-50 flex justify-end bg-slate-950/60 no-print"
+        @click.self="$store.tokoku.savedDrawerOpen = false"
+    >
+        <div
+            x-show="$store.tokoku.savedDrawerOpen"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="translate-x-full"
+            class="surface-card w-full max-w-md h-[100dvh] flex flex-col overflow-hidden"
+        >
+            <div class="p-4 sm:p-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
+                <div>
+                    <h2 id="judul-barang-tersimpan" class="font-bold text-base sm:text-lg">Barang Tersimpan</h2>
+                    <p class="text-xs text-muted-ink">Simpan unit incaran Anda di perangkat ini untuk dibandingkan sebelum chat WA.</p>
+                </div>
+                <button type="button" @click="$store.tokoku.savedDrawerOpen = false" class="btn-secondary min-h-11 px-3.5 rounded-lg text-sm cursor-pointer">
+                    Tutup
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto flex-1 space-y-3">
+                <template x-if="$store.tokoku.savedItems.length === 0">
+                    <div class="surface-subtle rounded-xl p-6 text-center space-y-2">
+                        <p class="font-semibold text-sm">Belum ada barang yang disimpan</p>
+                        <p class="text-xs text-muted-ink">Ketuk ikon penanda (Simpan) pada kartu produk di etalase untuk menyimpannya ke daftar ini.</p>
+                    </div>
+                </template>
+
+                <template x-for="item in $store.tokoku.savedItems" :key="item.id">
+                    <div class="surface-subtle rounded-xl p-3.5 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <img :src="item.image" alt="" x-show="item.image" class="w-14 h-12 rounded-lg object-cover shrink-0 border border-[var(--border-default)]">
+                            <div class="min-w-0">
+                                <a :href="item.url" wire:navigate class="font-semibold text-sm line-clamp-1 hover:underline" x-text="item.name"></a>
+                                <p class="font-bold text-sm tabular-nums" x-text="item.price"></p>
+                                <p class="text-xs text-muted-ink" x-text="item.condition"></p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            @click="$store.tokoku.removeSaved(item.id)"
+                            class="btn-secondary min-h-11 px-3 rounded-lg text-xs cursor-pointer shrink-0"
+                        >
+                            Hapus
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="$store.tokoku.savedItems.length > 0" class="p-4 border-t border-[var(--border-default)] flex justify-between gap-2">
+                <button type="button" @click="$store.tokoku.clearSaved()" class="btn-secondary min-h-11 px-4 rounded-lg text-xs sm:text-sm cursor-pointer">
+                    Kosongkan Semua
+                </button>
+                <button type="button" @click="$store.tokoku.savedDrawerOpen = false" class="btn-accent min-h-11 px-5 rounded-lg text-xs sm:text-sm cursor-pointer">
+                    Lanjut Belanja
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div
+        id="sheet-menu-seluler"
+        x-show="$store.tokoku.mobileSheetOpen"
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
         role="dialog"
         aria-modal="true"
         aria-labelledby="judul-sheet-seluler"
         class="md:hidden fixed inset-0 z-50 flex items-end bg-slate-950/60 no-print"
-        @click.self="mobileSheetOpen = false"
+        @click.self="$store.tokoku.mobileSheetOpen = false"
     >
-        <div class="surface-card w-full rounded-t-2xl p-5 space-y-4" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));">
+        <div
+            x-show="$store.tokoku.mobileSheetOpen"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="translate-y-full"
+            x-transition:enter-end="translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="translate-y-0"
+            x-transition:leave-end="translate-y-full"
+            class="surface-card w-full rounded-t-2xl p-5 space-y-4"
+            style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));"
+        >
             <div class="flex items-center justify-between gap-2">
-                <h2 id="judul-sheet-seluler" class="font-bold text-base">Menu &amp; Akses Staf</h2>
-                <button type="button" @click="mobileSheetOpen = false" class="btn-secondary min-h-11 px-3.5 rounded-lg text-sm cursor-pointer">
+                <h2 id="judul-sheet-seluler" class="font-bold text-base">Menu &amp; Akses Cepat</h2>
+                <button type="button" @click="$store.tokoku.mobileSheetOpen = false" class="btn-secondary min-h-11 px-3.5 rounded-lg text-sm cursor-pointer">
                     Tutup
                 </button>
             </div>
@@ -276,8 +516,8 @@
             <div class="grid grid-cols-1 gap-2.5">
                 <button
                     type="button"
-                    x-show="!isStandalone"
-                    @click="triggerInstall()"
+                    x-show="!$store.tokoku.isStandalone"
+                    @click="$store.tokoku.triggerInstall()"
                     class="btn-accent w-full min-h-11 px-4 rounded-lg text-sm cursor-pointer"
                 >
                     Pasang Aplikasi ke Layar Utama HP
@@ -285,9 +525,18 @@
 
                 <button
                     type="button"
-                    @click="toggleTheme()"
+                    @click="$store.tokoku.mobileSheetOpen = false; $store.tokoku.savedDrawerOpen = true"
+                    class="btn-secondary w-full min-h-11 px-4 rounded-lg text-sm cursor-pointer flex items-center justify-between"
+                >
+                    <span>Lihat Barang Tersimpan</span>
+                    <span class="badge-accent-soft px-2 py-0.5 rounded text-xs font-bold tabular-nums" x-text="$store.tokoku.savedItems.length"></span>
+                </button>
+
+                <button
+                    type="button"
+                    @click="$store.tokoku.toggleTheme()"
                     class="btn-secondary w-full min-h-11 px-4 rounded-lg text-sm cursor-pointer"
-                    x-text="isDark ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'"
+                    x-text="$store.tokoku.isDark ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'"
                 >
                     Ganti Tema
                 </button>
@@ -305,15 +554,30 @@
     </div>
 
     <div
-        x-show="installGuideOpen"
+        x-show="$store.tokoku.installGuideOpen"
         x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
         role="dialog"
         aria-modal="true"
         aria-labelledby="judul-panduan-pwa"
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 no-print"
-        @click.self="installGuideOpen = false"
+        @click.self="$store.tokoku.installGuideOpen = false"
     >
-        <div class="surface-card w-full max-w-md rounded-2xl p-5 sm:p-6 space-y-4">
+        <div
+            x-show="$store.tokoku.installGuideOpen"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="surface-card w-full max-w-md rounded-2xl p-5 sm:p-6 space-y-4"
+        >
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 id="judul-panduan-pwa" class="font-bold text-lg">Pasang {{ $store->store_name }} di HP Anda</h2>
@@ -321,7 +585,7 @@
                         Akses cepat layar penuh seperti aplikasi native tanpa mengunduh file besar.
                     </p>
                 </div>
-                <button type="button" @click="installGuideOpen = false" class="btn-secondary min-h-11 px-3 rounded-lg text-sm cursor-pointer">
+                <button type="button" @click="$store.tokoku.installGuideOpen = false" class="btn-secondary min-h-11 px-3 rounded-lg text-sm cursor-pointer">
                     Tutup
                 </button>
             </div>
@@ -342,10 +606,29 @@
                 </div>
             </div>
 
-            <button type="button" @click="installGuideOpen = false" class="btn-accent w-full min-h-11 rounded-lg text-sm cursor-pointer">
+            <button type="button" @click="$store.tokoku.installGuideOpen = false" class="btn-accent w-full min-h-11 rounded-lg text-sm cursor-pointer">
                 Mengerti
             </button>
         </div>
+    </div>
+
+    <div
+        aria-live="polite"
+        aria-atomic="true"
+        class="fixed right-4 bottom-24 md:bottom-6 z-50 flex flex-col items-end gap-2 pointer-events-none no-print"
+    >
+        <template x-for="toast in $store.tokoku.toasts" :key="toast.id">
+            <div
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-2"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-2"
+                class="toast-item px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold pointer-events-auto max-w-xs"
+                x-text="toast.message"
+            ></div>
+        </template>
     </div>
 
     @livewireScripts

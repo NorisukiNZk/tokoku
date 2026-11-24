@@ -7,7 +7,7 @@
 <div
     x-data
     @keydown.escape.window="$wire.closeSlotPicker()"
-    class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6"
+    class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 lg:pb-8 space-y-6"
 >
     <div class="surface-card rounded-xl p-5 sm:p-6 space-y-4">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -30,6 +30,7 @@
                 <button
                     type="button"
                     wire:click="applySmartTierPreset('budget')"
+                    @click="$store.tokoku.notify('Menyusun paket kelas hemat...')"
                     class="btn-secondary min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer"
                 >
                     Paket Hemat
@@ -37,6 +38,7 @@
                 <button
                     type="button"
                     wire:click="applySmartTierPreset('mid')"
+                    @click="$store.tokoku.notify('Menyusun paket kelas menengah...')"
                     class="btn-secondary min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer"
                 >
                     Paket Menengah
@@ -44,6 +46,7 @@
                 <button
                     type="button"
                     wire:click="applySmartTierPreset('high')"
+                    @click="$store.tokoku.notify('Menyusun paket kelas high-end...')"
                     class="btn-secondary min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer"
                 >
                     Paket High-End
@@ -53,6 +56,7 @@
             <button
                 type="button"
                 wire:click="clearBuild"
+                @click="$store.tokoku.notify('Semua slot rakitan dikosongkan')"
                 class="btn-secondary min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer"
             >
                 Kosongkan Semua
@@ -82,7 +86,7 @@
                     /** @var \App\Models\PcCatalogPart|null $chosen */
                     $chosen = $selectedProducts[$slotKey] ?? null;
                 @endphp
-                <div class="surface-card rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="surface-card rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
                     <div class="flex items-start gap-3.5 flex-1 min-w-0">
                         <span class="w-8 h-8 rounded-lg {{ $chosen ? 'btn-accent' : 'surface-subtle text-muted-ink' }} inline-flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                             {{ $loop->iteration }}
@@ -133,6 +137,7 @@
                             <button
                                 type="button"
                                 wire:click="removeComponent('{{ $slotKey }}')"
+                                @click="$store.tokoku.notify('{{ $meta['label'] }} dilepas')"
                                 class="btn-secondary min-h-11 px-3 rounded-lg text-sm cursor-pointer"
                                 aria-label="Lepas {{ $meta['label'] }}"
                             >
@@ -152,7 +157,7 @@
             @endforeach
         </section>
 
-        <aside aria-label="Ringkasan Kecocokan dan Total Anggaran" class="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
+        <aside id="ringkasan-rakitan" aria-label="Ringkasan Kecocokan dan Total Anggaran" class="lg:col-span-4 space-y-4 lg:sticky lg:top-24 scroll-mt-20">
             <div class="surface-card rounded-xl p-5 sm:p-6 space-y-5">
                 <h2 class="font-bold text-lg">Ringkasan Estimasi Rakitan</h2>
 
@@ -191,7 +196,7 @@
                         <span class="font-semibold tabular-nums">{{ $evaluation['estimated_wattage'] }} Watt</span>
                     </div>
                     <div class="w-full h-2 rounded-full bg-[var(--border-default)] overflow-hidden" aria-hidden="true">
-                        <div class="h-full bg-[var(--accent)]" style="width: {{ $powerPercent }}%"></div>
+                        <div class="h-full bg-[var(--accent)] transition-all duration-300" style="width: {{ $powerPercent }}%"></div>
                     </div>
                     <p class="text-xs text-muted-ink">
                         Saran kapasitas PSU minimal <strong class="text-[var(--text-primary)]">{{ $evaluation['recommended_psu_wattage'] }} Watt</strong>.
@@ -275,13 +280,46 @@
                 </form>
 
                 @if($savedShareUrl)
-                    <div class="badge-ok rounded-xl p-3.5 text-xs space-y-1">
-                        <p class="font-semibold">Tersimpan dengan kode <span class="font-mono">{{ $shareCode }}</span></p>
-                        <p class="break-all">{{ $savedShareUrl }}</p>
+                    <div class="badge-ok rounded-xl p-3.5 text-xs space-y-2.5">
+                        <div>
+                            <p class="font-semibold">Tersimpan dengan kode <span class="font-mono">{{ $shareCode }}</span></p>
+                            <p class="break-all opacity-90 mt-0.5">{{ $savedShareUrl }}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                @click="$store.tokoku.copyText(@js($savedShareUrl), 'Tautan rakitan ' + @js($shareCode) + ' disalin')"
+                                class="btn-secondary min-h-10 px-3 rounded-lg text-xs cursor-pointer"
+                            >
+                                Salin Link
+                            </button>
+                            <button
+                                type="button"
+                                @click="$store.tokoku.shareLink(@js($buildName ?: 'Simulasi Rakit PC'), 'Lihat simulasi rakitan PC saya (' + @js($shareCode) + ')', @js($savedShareUrl))"
+                                class="btn-secondary min-h-10 px-3 rounded-lg text-xs cursor-pointer"
+                            >
+                                Bagikan
+                            </button>
+                        </div>
                     </div>
                 @endif
             </div>
         </aside>
+    </div>
+
+    <div class="mobile-builder-bar lg:hidden fixed inset-x-0 z-30 px-4 py-2.5 flex items-center justify-between gap-3 no-print">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-base tabular-nums">Rp {{ number_format($grandTotal, 0, ',', '.') }}</span>
+                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded {{ $evaluation['passed'] ? 'badge-ok' : 'badge-err' }}">
+                    {{ $evaluation['passed'] ? 'Cocok' : 'Cek Bentrok' }}
+                </span>
+            </div>
+            <p class="text-[11px] text-muted-ink tabular-nums">{{ $filledRequiredCount }}/{{ $totalRequiredCount }} part utama &middot; {{ $evaluation['estimated_wattage'] }}W</p>
+        </div>
+        <a href="#ringkasan-rakitan" class="btn-accent min-h-11 px-4 rounded-lg text-xs inline-flex items-center shrink-0">
+            Lihat Ringkasan
+        </a>
     </div>
 
     @if($activePickerSlot)
@@ -290,6 +328,7 @@
             aria-modal="true"
             aria-labelledby="judul-dialog-komponen"
             class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 no-print"
+            @click.self="$wire.closeSlotPicker()"
         >
             <div class="surface-card rounded-2xl w-full max-w-4xl max-h-[90dvh] flex flex-col overflow-hidden">
                 <div class="p-4 sm:p-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
@@ -406,6 +445,7 @@
                                     <button
                                         type="button"
                                         wire:click="chooseComponent('{{ $activePickerSlot }}', {{ $cand->id }})"
+                                        @click="$store.tokoku.notify('Komponen terpasang ke simulasi')"
                                         class="{{ $isCompatible ? 'btn-accent' : 'btn-secondary' }} min-h-11 px-4 rounded-lg text-sm cursor-pointer"
                                     >
                                         {{ $isCompatible ? 'Pilih' : 'Tetap Pilih' }}
