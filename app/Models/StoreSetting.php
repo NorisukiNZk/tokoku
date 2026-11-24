@@ -16,6 +16,8 @@ class StoreSetting extends Model
         'cod_areas',
         'operating_hours',
         'default_assembly_fee',
+        'usd_to_idr_rate',
+        'last_parts_sync_at',
         'is_placeholder_data',
     ];
 
@@ -23,6 +25,8 @@ class StoreSetting extends Model
     {
         return [
             'default_assembly_fee' => 'integer',
+            'usd_to_idr_rate' => 'integer',
+            'last_parts_sync_at' => 'datetime',
             'is_placeholder_data' => 'boolean',
         ];
     }

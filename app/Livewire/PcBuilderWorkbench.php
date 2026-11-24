@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\PcBuild;
+use App\Models\PcCatalogPart;
 use App\Models\Product;
 use App\Models\StoreSetting;
 use App\Services\PcCompatibilityService;
@@ -31,6 +32,9 @@ class PcBuilderWorkbench extends Component
 
     public ?string $activePickerSlot = null;
     public string $pickerSearch = '';
+    public string $pickerTier = 'all';
+    public string $pickerSort = 'price_asc';
+    public int $pickerLimit = 30;
     public bool $onlyCompatible = true;
     public bool $includeAssembly = true;
 
@@ -46,12 +50,50 @@ class PcBuilderWorkbench extends Component
         }
 
         if ($this->preselectProductId > 0) {
-            $product = Product::query()->with('category')->find($this->preselectProductId);
-            $slot = $product?->category?->component_slot;
-            if ($product && $slot && array_key_exists($slot, $this->selectedIds)) {
-                $this->selectedIds[$slot] = $product->id;
+            $storeProduct = Product::query()->with('category')->find($this->preselectProductId);
+            $slot = $storeProduct?->category?->component_slot;
+            if ($storeProduct && $slot && array_key_exists($slot, $this->selectedIds)) {
+                $words = array_slice(preg_split('/\s+/', $storeProduct->name) ?: [], 0, 3);
+                $keyword = implode(' ', $words);
+                $matchedCatalogPart = PcCatalogPart::query()
+                    ->where('slot', $slot)
+                    ->where('name', 'like', '%' . $keyword . '%')
+                    ->orderBy('estimated_price_idr')
+                    ->first();
+
+                if ($matchedCatalogPart) {
+                    $this->selectedIds[$slot] = $matchedCatalogPart->id;
+                } else {
+                    $this->activePickerSlot = $slot;
+                    $this->pickerSearch = $keyword;
+                }
             }
         }
+    }
+
+    public function updatedPickerSearch(): void
+    {
+        $this->pickerLimit = 30;
+    }
+
+    public function updatedPickerTier(): void
+    {
+        $this->pickerLimit = 30;
+    }
+
+    public function updatedPickerSort(): void
+    {
+        $this->pickerLimit = 30;
+    }
+
+    public function updatedOnlyCompatible(): void
+    {
+        $this->pickerLimit = 30;
+    }
+
+    public function loadMoreCandidates(): void
+    {
+        $this->pickerLimit += 30;
     }
 
     public function loadPreset(string $code): void
@@ -60,6 +102,103 @@ class PcBuilderWorkbench extends Component
         $this->savedShareUrl = null;
         $this->shareCode = $code;
         $this->loadByShareCode($code);
+    }
+
+    public function applySmartTierPreset(string $tier): void
+    {
+        $this->loadErrorMessage = null;
+        $this->savedShareUrl = null;
+        $this->shareCode = '';
+
+        $targetSocket = $tier === 'budget' ? 'AM4' : 'AM5';
+        $targetRam = $tier === 'budget' ? 'DDR4' : 'DDR5';
+
+        $cpuQuery = PcCatalogPart::query()
+            ->where('slot', 'cpu')
+            ->where('compatibility_specs->socket', $targetSocket)
+            ->where('price_tier', $tier);
+
+        $cpu = (clone $cpuQuery)->orderBy('estimated_price_idr', $tier === 'high' ? 'desc' : 'asc')->first()
+            ?? PcCatalogPart::query()->where('slot', 'cpu')->where('compatibility_specs->socket', $targetSocket)->orderBy('estimated_price_idr')->first()
+            ?? PcCatalogPart::query()->where('slot', 'cpu')->orderBy('estimated_price_idr')->first();
+
+        $socket = $cpu?->compatibility_specs['socket'] ?? $targetSocket;
+
+        $mobo = PcCatalogPart::query()
+            ->where('slot', 'motherboard')
+            ->where('compatibility_specs->socket', $socket)
+            ->where('compatibility_specs->ram_type', $targetRam)
+            ->where('price_tier', $tier)
+            ->orderBy('estimated_price_idr')
+            ->first()
+            ?? PcCatalogPart::query()
+                ->where('slot', 'motherboard')
+                ->where('compatibility_specs->socket', $socket)
+                ->orderBy('estimated_price_idr')
+                ->first();
+
+        $ramType = $mobo?->compatibility_specs['ram_type'] ?? $targetRam;
+
+        $ram = PcCatalogPart::query()
+            ->where('slot', 'ram')
+            ->where('compatibility_specs->ram_type', $ramType)
+            ->where('compatibility_specs->capacity_gb', '>=', $tier === 'budget' ? 16 : 32)
+            ->orderBy('estimated_price_idr')
+            ->first()
+            ?? PcCatalogPart::query()->where('slot', 'ram')->where('compatibility_specs->ram_type', $ramType)->orderBy('estimated_price_idr')->first();
+
+        $gpu = PcCatalogPart::query()
+            ->where('slot', 'gpu')
+            ->where('price_tier', $tier)
+            ->orderBy('estimated_price_idr', $tier === 'high' ? 'desc' : 'asc')
+            ->first()
+            ?? PcCatalogPart::query()->where('slot', 'gpu')->orderBy('estimated_price_idr')->first();
+
+        $storage = PcCatalogPart::query()
+            ->where('slot', 'storage')
+            ->where('compatibility_specs->capacity_gb', '>=', $tier === 'budget' ? 500 : 1000)
+            ->where('spec_summary', 'like', '%SSD%')
+            ->orderBy('estimated_price_idr')
+            ->first()
+            ?? PcCatalogPart::query()->where('slot', 'storage')->orderBy('estimated_price_idr')->first();
+
+        $cooler = PcCatalogPart::query()
+            ->where('slot', 'cooler')
+            ->where('price_tier', $tier === 'high' ? 'mid' : 'budget')
+            ->orderBy('estimated_price_idr')
+            ->first()
+            ?? PcCatalogPart::query()->where('slot', 'cooler')->orderBy('estimated_price_idr')->first();
+
+        $moboForm = $mobo?->compatibility_specs['form_factor'] ?? 'ATX';
+        $gpuLen = (int) ($gpu?->compatibility_specs['gpu_length_mm'] ?? 240);
+
+        $case = PcCatalogPart::query()
+            ->where('slot', 'case')
+            ->whereJsonContains('compatibility_specs->supported_form_factors', $moboForm)
+            ->where('compatibility_specs->max_gpu_mm', '>=', max(280, $gpuLen))
+            ->where('price_tier', $tier === 'high' ? 'mid' : 'budget')
+            ->orderBy('estimated_price_idr')
+            ->first()
+            ?? PcCatalogPart::query()->where('slot', 'case')->orderBy('estimated_price_idr')->first();
+
+        $minPsuWatt = $tier === 'high' ? 850 : ($tier === 'mid' ? 650 : 550);
+        $psu = PcCatalogPart::query()
+            ->where('slot', 'psu')
+            ->where('compatibility_specs->psu_watt', '>=', $minPsuWatt)
+            ->orderBy('estimated_price_idr')
+            ->first()
+            ?? PcCatalogPart::query()->where('slot', 'psu')->orderByDesc('estimated_price_idr')->first();
+
+        $this->selectedIds = [
+            'cpu' => $cpu?->id,
+            'motherboard' => $mobo?->id,
+            'ram' => $ram?->id,
+            'gpu' => $gpu?->id,
+            'storage' => $storage?->id,
+            'cooler' => $cooler?->id,
+            'case' => $case?->id,
+            'psu' => $psu?->id,
+        ];
     }
 
     private function loadByShareCode(string $code): void
@@ -98,6 +237,8 @@ class PcBuilderWorkbench extends Component
         if (array_key_exists($slot, $this->selectedIds)) {
             $this->activePickerSlot = $slot;
             $this->pickerSearch = '';
+            $this->pickerTier = 'all';
+            $this->pickerLimit = 30;
         }
     }
 
@@ -107,10 +248,10 @@ class PcBuilderWorkbench extends Component
         $this->pickerSearch = '';
     }
 
-    public function chooseComponent(string $slot, int $productId): void
+    public function chooseComponent(string $slot, int $partId): void
     {
         if (array_key_exists($slot, $this->selectedIds)) {
-            $this->selectedIds[$slot] = $productId;
+            $this->selectedIds[$slot] = $partId;
             $this->activePickerSlot = null;
             $this->pickerSearch = '';
             $this->savedShareUrl = null;
@@ -135,8 +276,8 @@ class PcBuilderWorkbench extends Component
             'buildName.min' => 'Nama rakitan minimal 3 karakter.',
         ]);
 
-        $selectedProducts = $this->resolveSelectedProducts();
-        $hasAnyPart = collect($selectedProducts)->filter()->isNotEmpty();
+        $selectedParts = $this->resolveSelectedParts();
+        $hasAnyPart = collect($selectedParts)->filter()->isNotEmpty();
 
         if (! $hasAnyPart) {
             $this->addError('buildName', 'Pilih minimal satu komponen sebelum menyimpan rakitan.');
@@ -145,7 +286,7 @@ class PcBuilderWorkbench extends Component
         }
 
         $store = StoreSetting::current();
-        $evaluation = $compat->evaluate($selectedProducts);
+        $evaluation = $compat->evaluate($selectedParts);
         $assemblyFee = $this->includeAssembly ? (int) $store->default_assembly_fee : 0;
 
         $saved = PcBuild::query()->create([
@@ -167,18 +308,18 @@ class PcBuilderWorkbench extends Component
     }
 
     /**
-     * @return array<string, Product|null>
+     * @return array<string, PcCatalogPart|null>
      */
-    private function resolveSelectedProducts(): array
+    private function resolveSelectedParts(): array
     {
         $ids = array_values(array_filter($this->selectedIds));
-        $productsById = count($ids) > 0
-            ? Product::query()->with('category')->whereIn('id', $ids)->get()->keyBy('id')
+        $partsById = count($ids) > 0
+            ? PcCatalogPart::query()->whereIn('id', $ids)->get()->keyBy('id')
             : collect();
 
         $resolved = [];
         foreach ($this->selectedIds as $slot => $id) {
-            $resolved[$slot] = $id ? ($productsById->get($id) ?? null) : null;
+            $resolved[$slot] = $id ? ($partsById->get($id) ?? null) : null;
         }
 
         return $resolved;
@@ -187,68 +328,92 @@ class PcBuilderWorkbench extends Component
     public function render(PcCompatibilityService $compat)
     {
         $store = StoreSetting::current();
-        $selectedProducts = $this->resolveSelectedProducts();
-        $evaluation = $compat->evaluate($selectedProducts);
+        $selectedParts = $this->resolveSelectedParts();
+        $evaluation = $compat->evaluate($selectedParts);
 
         $assemblyFee = $this->includeAssembly ? (int) $store->default_assembly_fee : 0;
         $grandTotal = $evaluation['parts_subtotal'] + $assemblyFee;
 
+        $totalCatalogCount = PcCatalogPart::query()->count();
         $pickerCandidates = collect();
+        $pickerTotalMatching = 0;
+
         if ($this->activePickerSlot) {
-            $query = Product::query()
-                ->with('category')
-                ->where('show_in_pc_builder', true)
-                ->where('availability_status', 'available')
-                ->where('stock', '>', 0)
-                ->whereHas('category', fn ($q) => $q->where('component_slot', $this->activePickerSlot));
+            $query = PcCatalogPart::query()->where('slot', $this->activePickerSlot);
 
             if ($this->pickerSearch !== '') {
-                $term = '%' . trim($this->pickerSearch) . '%';
-                $query->where(function ($sub) use ($term) {
-                    $sub->where('name', 'like', $term)
-                        ->orWhere('sku', 'like', $term)
-                        ->orWhere('brand', 'like', $term);
-                });
+                $words = array_filter(preg_split('/\s+/', trim($this->pickerSearch)) ?: []);
+                foreach ($words as $w) {
+                    $term = '%' . $w . '%';
+                    $query->where(function ($sub) use ($term) {
+                        $sub->where('name', 'like', $term)
+                            ->orWhere('spec_summary', 'like', $term)
+                            ->orWhere('brand', 'like', $term);
+                    });
+                }
             }
 
-            $annotated = $compat->annotateCandidatesForSlot(
-                $this->activePickerSlot,
-                $query->orderBy('price')->get(),
-                $selectedProducts
-            );
+            if ($this->pickerTier !== 'all') {
+                $query->where('price_tier', $this->pickerTier);
+            }
 
-            $pickerCandidates = $this->onlyCompatible
-                ? $annotated->where('compatible', true)->values()
-                : $annotated->values();
+            if ($this->onlyCompatible) {
+                $withoutCurrentSlot = $selectedParts;
+                $withoutCurrentSlot[$this->activePickerSlot] = null;
+                $baseEval = $compat->evaluate($withoutCurrentSlot);
+                $compat->applySqlCompatibilityConstraints(
+                    $query,
+                    $this->activePickerSlot,
+                    $selectedParts,
+                    $baseEval['estimated_wattage']
+                );
+            }
+
+            $pickerTotalMatching = (clone $query)->count();
+
+            match ($this->pickerSort) {
+                'price_desc' => $query->orderByDesc('estimated_price_idr'),
+                'name_asc' => $query->orderBy('name'),
+                default => $query->orderBy('estimated_price_idr'),
+            };
+
+            $fetched = $query->limit($this->pickerLimit)->get();
+            $pickerCandidates = $compat->annotateCandidatesForSlot(
+                $this->activePickerSlot,
+                $fetched,
+                $selectedParts
+            );
         }
 
-        $waLines = ["Halo Admin {$store->store_name}, saya ingin konsultasi / memesan rakitan PC berikut:"];
+        $waLines = ["Halo Admin {$store->store_name}, saya ingin konsultasi / pesan rakitan PC dengan rincian berikut:"];
         if ($this->shareCode !== '') {
             $waLines[] = "Kode Simulasi: {$this->shareCode}";
         }
         foreach (PcCompatibilityService::BUILDER_SLOTS as $slotKey => $meta) {
-            $p = $selectedProducts[$slotKey] ?? null;
+            $p = $selectedParts[$slotKey] ?? null;
             if ($p) {
-                $waLines[] = "- {$meta['label']}: {$p->name} ({$p->conditionShortLabel()}) = {$p->formattedPrice()}";
+                $waLines[] = "- {$meta['label']}: {$p->name} (Est. {$p->formattedPrice()})";
             }
         }
         if ($this->includeAssembly) {
             $waLines[] = "- Jasa Rakit & Manajemen Kabel: Rp " . number_format($assemblyFee, 0, ',', '.');
         }
-        $waLines[] = "Estimasi Beban Daya: {$evaluation['estimated_wattage']}W (Rekomendasi PSU {$evaluation['recommended_psu_wattage']}W)";
-        $waLines[] = "Total Estimasi: Rp " . number_format($grandTotal, 0, ',', '.');
+        $waLines[] = "Estimasi Beban Daya: {$evaluation['estimated_wattage']}W (Saran PSU {$evaluation['recommended_psu_wattage']}W)";
+        $waLines[] = "Total Estimasi Anggaran: Rp " . number_format($grandTotal, 0, ',', '.');
         $waLines[] = "";
-        $waLines[] = "Mohon cek ketersediaan stok fisik unitnya.";
+        $waLines[] = "Mohon info ketersediaan stok toko atau estimasi pemesanan komponennya.";
 
         return view('livewire.pc-builder-workbench', [
             'store' => $store,
             'slots' => PcCompatibilityService::BUILDER_SLOTS,
-            'selectedProducts' => $selectedProducts,
+            'selectedProducts' => $selectedParts,
             'evaluation' => $evaluation,
             'assemblyFee' => $assemblyFee,
             'grandTotal' => $grandTotal,
+            'totalCatalogCount' => $totalCatalogCount,
             'pickerCandidates' => $pickerCandidates,
+            'pickerTotalMatching' => $pickerTotalMatching,
             'whatsappBuildUrl' => $store->whatsappUrl(implode("\n", $waLines)),
-        ])->title('Simulasi Rakit PC & Cek Kompatibilitas - ' . $store->store_name);
+        ])->title('Simulasi Rakit PC & Harga Part Lengkap - ' . $store->store_name);
     }
 }

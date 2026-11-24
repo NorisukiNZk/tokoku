@@ -8,10 +8,10 @@ Aplikasi web terpadu untuk toko perangkat keras komputer yang menggabungkan etal
    - Pencarian instan serta penyaringan berdasarkan kategori, kondisi fisik (`Baru Segel`, `Second Mulus`, `Second Normal`, `Unit Minus`), ketersediaan stok, dan status negosiasi harga.
    - Halaman detail barang dilengkapi keterangan garansi, catatan kondisi fisik, spesifikasi teknis, dan tombol pesan langsung ke WhatsApp toko dengan teks produk terisi otomatis.
 
-2. **Simulasi Rakit PC & Mesin Kompatibilitas (`/rakit-pc`)**
-   - Pemilihan komponen bertahap dari stok toko (mendukung kombinasi komponen baru dan *second*).
-   - Validasi otomatis kesesuaian soket prosesor dan motherboard (`AM4`, `AM5`, `LGA1700`), generasi memori (`DDR4`/`DDR5`), ukuran motherboard terhadap casing (`ATX`, `mATX`, `ITX`), batas panjang kartu grafis (`mm`), serta perhitungan daya dan rekomendasi kapasitas PSU (`Watt`).
-   - Fitur simpan kode tautan rakitan (`RKT-...`), cetak estimasi PDF, dan kirim rincian spesifikasi ke WhatsApp.
+2. **Simulasi Rakit PC Berbasis API Ribuan Part (`/rakit-pc`)**
+   - Menggunakan database katalog referensi tersendiri (`pc_catalog_parts`) yang disinkronkan dari dataset terbuka `docyx/pc-part-dataset` (10.000+ part mulai kelas *entry-level* paling murah hingga *flagship* beserta konversi kurs USD ke Rupiah otomatis), terpisah dari stok fisik etalase.
+   - Validasi otomatis kesesuaian soket prosesor dan motherboard (`AM4`, `AM5`, `LGA1700`, `LGA1851`), generasi memori (`DDR3`/`DDR4`/`DDR5`), ukuran motherboard terhadap casing, batas panjang kartu grafis (`mm`), serta perhitungan daya PSU (`Watt`).
+   - Dilengkapi penyusunan paket otomatis (*Paket Hemat*, *Menengah*, *High-End*), filter kelas harga, simpan tautan rakitan (`RKT-...`), cetak PDF, dan konsultasi pemesanan ke WhatsApp.
 
 3. **Booking & Lacak Tiket Servis (`/servis`)**
    - Formulir pendaftaran jadwal servis (*antar ke toko* atau *jemput unit*) yang langsung menerbitkan nomor tiket resmi (`SRV-...`).
@@ -83,9 +83,10 @@ tokoku/
    ```
    *(Secara bawaan proyek menggunakan SQLite sehingga siap berjalan langsung. Jika ingin memakai MySQL, sesuaikan `DB_CONNECTION` dan nama database di dalam `.env`).*
 
-4. **Jalankan migrasi database, data contoh awal, dan tautan penyimpanan gambar**
+4. **Jalankan migrasi database, data awal, sinkronisasi ribuan part PC dari API, dan tautan gambar**
    ```bash
    php artisan migrate --seed
+   php artisan tokoku:sync-parts
    php artisan storage:link
    ```
 

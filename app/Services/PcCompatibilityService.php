@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Product;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class PcCompatibilityService
@@ -11,47 +12,47 @@ class PcCompatibilityService
         'cpu' => [
             'label' => 'Prosesor (CPU)',
             'required' => true,
-            'hint' => 'Menentukan soket motherboard yang dapat dipilih.',
+            'hint' => 'Menentukan soket motherboard yang dapat dipilih (dari kelas hemat hingga flagship).',
         ],
         'motherboard' => [
             'label' => 'Motherboard',
             'required' => true,
-            'hint' => 'Menentukan tipe memori DDR dan ukuran form factor casing.',
+            'hint' => 'Menyesuaikan soket prosesor, generasi memori DDR, dan ukuran casing.',
         ],
         'ram' => [
             'label' => 'Memori (RAM)',
             'required' => true,
-            'hint' => 'Harus sesuai generasi DDR dan kapasitas slot motherboard.',
+            'hint' => 'Otomatis disaring sesuai generasi DDR3/DDR4/DDR5 dan jumlah slot motherboard.',
         ],
         'gpu' => [
             'label' => 'Kartu Grafis (VGA / GPU)',
             'required' => false,
-            'hint' => 'Opsional bila CPU memiliki grafis terintegrasi (non-F / seri G).',
+            'hint' => 'Opsional bila CPU memiliki grafis bawaan (iGPU). Pilih sesuai target resolusi & anggaran.',
         ],
         'storage' => [
             'label' => 'Penyimpanan (SSD / HDD)',
             'required' => true,
-            'hint' => 'Media instalasi sistem operasi dan data kerja.',
+            'hint' => 'Pilih SSD NVMe atau SATA untuk sistem operasi dan penyimpanan data.',
         ],
         'cooler' => [
-            'label' => 'Pendingin Prosesor (CPU Cooler)',
+            'label' => 'Pendingin CPU (Cooler)',
             'required' => false,
-            'hint' => 'Disarankan bila prosesor tidak menyertakan kipas bawaan.',
+            'hint' => 'Pendingin udara atau Liquid AIO untuk menjaga suhu kerja prosesor.',
         ],
         'case' => [
-            'label' => 'Casing PC',
+            'label' => 'Casing Komputer',
             'required' => true,
-            'hint' => 'Harus mendukung ukuran motherboard dan panjang fisik VGA.',
+            'hint' => 'Dicek terhadap ukuran motherboard (ATX/mATX/ITX) dan panjang fisik kartu grafis.',
         ],
         'psu' => [
             'label' => 'Power Supply (PSU)',
             'required' => true,
-            'hint' => 'Kapasitas daya murni disarankan memiliki ruang aman minimal 25%.',
+            'hint' => 'Kapasitas daya dihitung otomatis dari total komponen ditambah ruang aman 30%.',
         ],
     ];
 
     /**
-     * @param array<string, Product|null> $selected
+     * @param array<string, Model|null> $selected
      * @return array{
      *     passed: bool,
      *     errors: list<string>,
@@ -138,7 +139,7 @@ class PcCompatibilityService
         if ($cpu && ! $gpu) {
             $hasIgpu = (bool) ($cpuSpecs['has_igpu'] ?? true);
             if (! $hasIgpu) {
-                $warnings[] = "{$cpu->name} tidak memiliki grafis terintegrasi (tanpa iGPU). Anda wajib menambahkan Kartu Grafis (VGA) agar layar tampil.";
+                $warnings[] = "{$cpu->name} tidak memiliki grafis bawaan (tanpa iGPU). Tambahkan Kartu Grafis (VGA) agar layar dapat tampil.";
             }
         }
 
@@ -160,16 +161,16 @@ class PcCompatibilityService
         if ($psu) {
             $psuWatt = (int) ($psuSpecs['psu_watt'] ?? 0);
             if ($psuWatt > 0 && $psuWatt < ($wattage + 40)) {
-                $errors[] = "Daya {$psu->name} ({$psuWatt}W) terlalu mepet/kurang untuk beban komponen sekitar {$wattage}W. Pilih minimal {$recommendedPsu}W.";
+                $errors[] = "Daya {$psu->name} ({$psuWatt}W) kurang untuk beban komponen sekitar {$wattage}W. Pilih minimal {$recommendedPsu}W.";
             } elseif ($psuWatt > 0 && $psuWatt < $recommendedPsu) {
-                $warnings[] = "Daya {$psu->name} ({$psuWatt}W) masih bisa menyala untuk beban {$wattage}W, namun disarankan {$recommendedPsu}W agar ruang upgrade lebih aman.";
+                $warnings[] = "Daya {$psu->name} ({$psuWatt}W) cukup mepet untuk beban {$wattage}W; disarankan {$recommendedPsu}W agar lebih aman.";
             }
         }
 
         $subtotal = 0;
         foreach ($selected as $part) {
-            if ($part instanceof Product) {
-                $subtotal += (int) $part->price;
+            if ($part instanceof Model) {
+                $subtotal += (int) ($part->estimated_price_idr ?? $part->price ?? 0);
             }
         }
 
@@ -184,13 +185,74 @@ class PcCompatibilityService
     }
 
     /**
-     * @param Collection<int, Product> $candidates
-     * @param array<string, Product|null> $selected
-     * @return Collection<int, array{product: Product, compatible: bool, reason: string|null}>
+     * Push compatibility constraints down into SQL so filtering 10,000+ catalog parts stays fast.
+     *
+     * @param array<string, Model|null> $selected
+     */
+    public function applySqlCompatibilityConstraints(Builder $query, string $slot, array $selected, int $currentWattage): void
+    {
+        $cpu = $selected['cpu'] ?? null;
+        $mobo = $selected['motherboard'] ?? null;
+        $ram = $selected['ram'] ?? null;
+        $gpu = $selected['gpu'] ?? null;
+        $case = $selected['case'] ?? null;
+
+        if ($slot === 'cpu' && $mobo && ! empty($mobo->compatibility_specs['socket'])) {
+            $query->where('compatibility_specs->socket', $mobo->compatibility_specs['socket']);
+        }
+
+        if ($slot === 'motherboard') {
+            if ($cpu && ! empty($cpu->compatibility_specs['socket'])) {
+                $query->where('compatibility_specs->socket', $cpu->compatibility_specs['socket']);
+            }
+            if ($ram && ! empty($ram->compatibility_specs['ram_type'])) {
+                $query->where('compatibility_specs->ram_type', $ram->compatibility_specs['ram_type']);
+            }
+            if ($case && ! empty($case->compatibility_specs['supported_form_factors'])) {
+                $query->whereIn('compatibility_specs->form_factor', (array) $case->compatibility_specs['supported_form_factors']);
+            }
+        }
+
+        if ($slot === 'ram' && $mobo) {
+            if (! empty($mobo->compatibility_specs['ram_type'])) {
+                $query->where('compatibility_specs->ram_type', $mobo->compatibility_specs['ram_type']);
+            }
+            if (! empty($mobo->compatibility_specs['ram_slots'])) {
+                $query->where('compatibility_specs->modules_count', '<=', (int) $mobo->compatibility_specs['ram_slots']);
+            }
+        }
+
+        if ($slot === 'gpu' && $case && ! empty($case->compatibility_specs['max_gpu_mm'])) {
+            $maxMm = (int) $case->compatibility_specs['max_gpu_mm'];
+            $query->where(function (Builder $sub) use ($maxMm) {
+                $sub->whereNull('compatibility_specs->gpu_length_mm')
+                    ->orWhere('compatibility_specs->gpu_length_mm', '<=', $maxMm);
+            });
+        }
+
+        if ($slot === 'case') {
+            if ($mobo && ! empty($mobo->compatibility_specs['form_factor'])) {
+                $query->whereJsonContains('compatibility_specs->supported_form_factors', $mobo->compatibility_specs['form_factor']);
+            }
+            if ($gpu && ! empty($gpu->compatibility_specs['gpu_length_mm'])) {
+                $query->where('compatibility_specs->max_gpu_mm', '>=', (int) $gpu->compatibility_specs['gpu_length_mm']);
+            }
+        }
+
+        if ($slot === 'psu') {
+            $minSafeWatt = max(350, $currentWattage + 40);
+            $query->where('compatibility_specs->psu_watt', '>=', $minSafeWatt);
+        }
+    }
+
+    /**
+     * @param Collection<int, Model> $candidates
+     * @param array<string, Model|null> $selected
+     * @return Collection<int, array{product: Model, compatible: bool, reason: string|null}>
      */
     public function annotateCandidatesForSlot(string $slot, Collection $candidates, array $selected): Collection
     {
-        return $candidates->map(function (Product $candidate) use ($slot, $selected) {
+        return $candidates->map(function (Model $candidate) use ($slot, $selected) {
             $hypothetical = $selected;
             $hypothetical[$slot] = $candidate;
 

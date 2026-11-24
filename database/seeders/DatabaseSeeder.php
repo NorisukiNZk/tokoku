@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\PcBuild;
+use App\Models\PcCatalogPart;
 use App\Models\Product;
 use App\Models\ServicePackage;
 use App\Models\ServiceTicket;
@@ -536,24 +537,54 @@ class DatabaseSeeder extends Seeder
         }
 
         $compat = new PcCompatibilityService();
-        $presetSelected = [
-            'cpu' => $createdProducts['CPU-R5-5600'],
-            'motherboard' => $createdProducts['MB-B550M-VDH'],
-            'ram' => $createdProducts['RAM-KF-16D4'],
-            'gpu' => $createdProducts['VGA-RX6600-USED'],
-            'storage' => $createdProducts['SSD-NM620-512'],
-            'cooler' => $createdProducts['CLR-AK400'],
-            'case' => $createdProducts['CASE-FLATLINE'],
-            'psu' => $createdProducts['PSU-FSP-550'],
+        $fallbackCatalogSeeds = [
+            ['external_key' => 'seed-cpu-budget', 'slot' => 'cpu', 'name' => 'AMD Ryzen 5 5500', 'brand' => 'AMD', 'price_usd' => 84, 'estimated_price_idr' => 1495000, 'price_tier' => 'budget', 'spec_summary' => 'Soket AM4 | 6 Core | 4.2 GHz | Tanpa iGPU', 'compatibility_specs' => ['socket' => 'AM4', 'tdp_watt' => 65, 'has_igpu' => false]],
+            ['external_key' => 'seed-cpu-mid', 'slot' => 'cpu', 'name' => 'AMD Ryzen 5 7600', 'brand' => 'AMD', 'price_usd' => 188, 'estimated_price_idr' => 3380000, 'price_tier' => 'mid', 'spec_summary' => 'Soket AM5 | 6 Core | 5.1 GHz | iGPU Radeon', 'compatibility_specs' => ['socket' => 'AM5', 'tdp_watt' => 65, 'has_igpu' => true]],
+            ['external_key' => 'seed-cpu-high', 'slot' => 'cpu', 'name' => 'AMD Ryzen 7 9800X3D', 'brand' => 'AMD', 'price_usd' => 479, 'estimated_price_idr' => 8620000, 'price_tier' => 'high', 'spec_summary' => 'Soket AM5 | 8 Core | 5.2 GHz | iGPU Radeon', 'compatibility_specs' => ['socket' => 'AM5', 'tdp_watt' => 120, 'has_igpu' => true]],
+            ['external_key' => 'seed-mb-budget', 'slot' => 'motherboard', 'name' => 'MSI B550M PRO-VDH WIFI', 'brand' => 'MSI', 'price_usd' => 99, 'estimated_price_idr' => 1780000, 'price_tier' => 'budget', 'spec_summary' => 'Soket AM4 | DDR4 | Micro ATX | 4 Slot RAM', 'compatibility_specs' => ['socket' => 'AM4', 'ram_type' => 'DDR4', 'ram_slots' => 4, 'form_factor' => 'MATX']],
+            ['external_key' => 'seed-mb-mid', 'slot' => 'motherboard', 'name' => 'MSI B650 GAMING PLUS WIFI', 'brand' => 'MSI', 'price_usd' => 169, 'estimated_price_idr' => 3040000, 'price_tier' => 'mid', 'spec_summary' => 'Soket AM5 | DDR5 | ATX | 4 Slot RAM', 'compatibility_specs' => ['socket' => 'AM5', 'ram_type' => 'DDR5', 'ram_slots' => 4, 'form_factor' => 'ATX']],
+            ['external_key' => 'seed-ram-budget', 'slot' => 'ram', 'name' => 'Silicon Power GAMING 16 GB', 'brand' => 'Silicon', 'price_usd' => 32, 'estimated_price_idr' => 575000, 'price_tier' => 'budget', 'spec_summary' => '16 GB (2x8GB) | DDR4 3200 MHz | CL16', 'compatibility_specs' => ['ram_type' => 'DDR4', 'modules_count' => 2, 'capacity_gb' => 16]],
+            ['external_key' => 'seed-ram-mid', 'slot' => 'ram', 'name' => 'Corsair Vengeance 32 GB', 'brand' => 'Corsair', 'price_usd' => 94, 'estimated_price_idr' => 1690000, 'price_tier' => 'mid', 'spec_summary' => '32 GB (2x16GB) | DDR5 6000 MHz | CL36', 'compatibility_specs' => ['ram_type' => 'DDR5', 'modules_count' => 2, 'capacity_gb' => 32]],
+            ['external_key' => 'seed-gpu-budget', 'slot' => 'gpu', 'name' => 'ASRock Challenger D Radeon RX 6600', 'brand' => 'ASRock', 'price_usd' => 199, 'estimated_price_idr' => 3580000, 'price_tier' => 'budget', 'spec_summary' => 'Radeon RX 6600 | 8 GB VRAM | 269 mm | ~135W', 'compatibility_specs' => ['gpu_length_mm' => 269, 'tdp_watt' => 135]],
+            ['external_key' => 'seed-gpu-mid', 'slot' => 'gpu', 'name' => 'Gigabyte WINDFORCE OC GeForce RTX 4070 SUPER', 'brand' => 'Gigabyte', 'price_usd' => 599, 'estimated_price_idr' => 10780000, 'price_tier' => 'high', 'spec_summary' => 'GeForce RTX 4070 SUPER | 12 GB VRAM | 261 mm | ~220W', 'compatibility_specs' => ['gpu_length_mm' => 261, 'tdp_watt' => 220]],
+            ['external_key' => 'seed-ssd-budget', 'slot' => 'storage', 'name' => 'Kingston NV2 1 TB', 'brand' => 'Kingston', 'price_usd' => 56, 'estimated_price_idr' => 1010000, 'price_tier' => 'mid', 'spec_summary' => '1 TB | SSD | M.2 PCIe 4.0 X4', 'compatibility_specs' => ['capacity_gb' => 1000, 'tdp_watt' => 6]],
+            ['external_key' => 'seed-clr-budget', 'slot' => 'cooler', 'name' => 'Thermalright Peerless Assassin 120 SE', 'brand' => 'Thermalright', 'price_usd' => 34.9, 'estimated_price_idr' => 630000, 'price_tier' => 'budget', 'spec_summary' => 'Pendingin Udara | 25.6 dBA', 'compatibility_specs' => ['tdp_watt' => 5]],
+            ['external_key' => 'seed-case-budget', 'slot' => 'case', 'name' => 'Montech AIR 903 MAX', 'brand' => 'Montech', 'price_usd' => 74, 'estimated_price_idr' => 1330000, 'price_tier' => 'mid', 'spec_summary' => 'ATX Mid Tower | Tempered Glass | Maks VGA ~350mm', 'compatibility_specs' => ['supported_form_factors' => ['ATX', 'MATX', 'ITX'], 'max_gpu_mm' => 350]],
+            ['external_key' => 'seed-psu-budget', 'slot' => 'psu', 'name' => 'MSI MAG A650BN', 'brand' => 'MSI', 'price_usd' => 65, 'estimated_price_idr' => 1170000, 'price_tier' => 'budget', 'spec_summary' => '650 Watt | 80+ Bronze | Non-Modular', 'compatibility_specs' => ['psu_watt' => 650]],
+            ['external_key' => 'seed-psu-high', 'slot' => 'psu', 'name' => 'Corsair RM850e (2023)', 'brand' => 'Corsair', 'price_usd' => 119, 'estimated_price_idr' => 2140000, 'price_tier' => 'mid', 'spec_summary' => '850 Watt | 80+ Gold | Full Modular', 'compatibility_specs' => ['psu_watt' => 850]],
         ];
+
+        if (PcCatalogPart::query()->count() < 50) {
+            foreach ($fallbackCatalogSeeds as $row) {
+                PcCatalogPart::query()->updateOrCreate(
+                    ['external_key' => $row['external_key']],
+                    $row
+                );
+            }
+        }
+
+        $presetSelected = [
+            'cpu' => PcCatalogPart::query()->where('slot', 'cpu')->orderBy('estimated_price_idr')->first(),
+            'motherboard' => PcCatalogPart::query()->where('slot', 'motherboard')->where('compatibility_specs->socket', 'AM4')->orderBy('estimated_price_idr')->first()
+                ?? PcCatalogPart::query()->where('slot', 'motherboard')->first(),
+            'ram' => PcCatalogPart::query()->where('slot', 'ram')->where('compatibility_specs->ram_type', 'DDR4')->orderBy('estimated_price_idr')->first()
+                ?? PcCatalogPart::query()->where('slot', 'ram')->first(),
+            'gpu' => PcCatalogPart::query()->where('slot', 'gpu')->orderBy('estimated_price_idr')->first(),
+            'storage' => PcCatalogPart::query()->where('slot', 'storage')->orderBy('estimated_price_idr')->first(),
+            'cooler' => PcCatalogPart::query()->where('slot', 'cooler')->orderBy('estimated_price_idr')->first(),
+            'case' => PcCatalogPart::query()->where('slot', 'case')->orderBy('estimated_price_idr')->first(),
+            'psu' => PcCatalogPart::query()->where('slot', 'psu')->where('compatibility_specs->psu_watt', '>=', 550)->orderBy('estimated_price_idr')->first()
+                ?? PcCatalogPart::query()->where('slot', 'psu')->first(),
+        ];
+        $presetSelected = array_filter($presetSelected);
         $eval = $compat->evaluate($presetSelected);
 
         PcBuild::query()->updateOrCreate(
             ['share_code' => 'RKT-CONTOH'],
             [
-                'build_name' => 'Rakitan Hemat 1080p (Part Baru + VGA Bekas Bergaransi)',
-                'customer_name' => 'Contoh Rakitan Toko',
-                'purpose_label' => 'Gaming 1080p & Editing',
+                'build_name' => 'Rakitan Hemat 1080p (Referensi Katalog API)',
+                'customer_name' => 'Contoh Rakitan',
+                'purpose_label' => 'Gaming 1080p & Kerja',
                 'selected_components' => collect($presetSelected)->mapWithKeys(fn ($p, $slot) => [$slot => $p->id])->all(),
                 'estimated_wattage' => $eval['estimated_wattage'],
                 'recommended_psu_wattage' => $eval['recommended_psu_wattage'],

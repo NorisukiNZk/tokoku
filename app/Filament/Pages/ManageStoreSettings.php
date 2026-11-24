@@ -72,6 +72,12 @@ class ManageStoreSettings extends Page implements HasForms
                             ->numeric()
                             ->prefix('Rp')
                             ->required(),
+                        TextInput::make('usd_to_idr_rate')
+                            ->label('Kurs Konversi API Part PC (1 USD ke Rp)')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->default(16500)
+                            ->required(),
                         FileUpload::make('logo_path')
                             ->label('Logo Resmi Toko (Opsional, PNG/SVG)')
                             ->image()

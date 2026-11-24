@@ -33,7 +33,7 @@ class TokokuApplicationTest extends TestCase
             ->assertOk()
             ->assertSee($product->name);
 
-        $this->get('/rakit-pc')->assertOk()->assertSee('Meja Simulasi Rakit PC');
+        $this->get('/rakit-pc')->assertOk()->assertSee('Simulasi Rakit PC');
         $this->get('/servis')->assertOk()->assertSee('Layanan Servis');
     }
 
@@ -52,8 +52,10 @@ class TokokuApplicationTest extends TestCase
     public function test_pc_builder_preset_and_saving_share_code_work(): void
     {
         Livewire::test(PcBuilderWorkbench::class)
-            ->call('loadPreset', 'RKT-CONTOH')
-            ->assertSet('shareCode', 'RKT-CONTOH')
+            ->call('applySmartTierPreset', 'budget')
+            ->call('openSlotPicker', 'cpu')
+            ->set('pickerTier', 'budget')
+            ->call('closeSlotPicker')
             ->set('buildName', '')
             ->call('saveBuild')
             ->assertHasErrors(['buildName'])
@@ -102,6 +104,7 @@ class TokokuApplicationTest extends TestCase
 
         $this->actingAs($admin)->get('/admin')->assertOk();
         $this->actingAs($admin)->get('/admin/products')->assertOk();
+        $this->actingAs($admin)->get('/admin/pc-catalog-parts')->assertOk();
         $this->actingAs($admin)->get('/admin/service-tickets')->assertOk();
         $this->actingAs($admin)->get('/admin/manage-store-settings')->assertOk();
         $this->actingAs($admin)->get('/teknisi')->assertOk();
