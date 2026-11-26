@@ -84,9 +84,9 @@
             </div>
 
             @include('filament.components.recaptcha-box', [
-                'isGoogleRecaptcha' => $isGoogleRecaptcha,
+                'recaptchaConfigured' => $recaptchaConfigured,
                 'recaptchaSiteKey' => $recaptchaSiteKey,
-                'challengePrompt' => $challengePrompt,
+                'isUsingTestKey' => $isUsingTestKey,
             ])
 
             <button

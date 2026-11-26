@@ -20,18 +20,12 @@ class TokokuLogin extends BaseLogin
     public string $password = '';
     public bool $remember = false;
     public string $recaptchaToken = '';
-    public string $securityAnswer = '';
-    public string $challengePrompt = '';
 
     public function mount(): void
     {
         if (Filament::auth()->check()) {
             redirect()->intended(Filament::getUrl());
-
-            return;
         }
-
-        $this->refreshSecurityChallenge();
     }
 
     public function getTitle(): string | Htmlable
@@ -52,19 +46,6 @@ class TokokuLogin extends BaseLogin
             : 'Masuk ke Meja Teknisi';
     }
 
-    public function refreshSecurityChallenge(): void
-    {
-        $verifier = app(RecaptchaVerifier::class);
-        $this->securityAnswer = '';
-        $this->recaptchaToken = '';
-
-        if (! $verifier->isGoogleConfigured()) {
-            $this->challengePrompt = $verifier->generateFallbackChallenge($this->captchaContextKey());
-        } else {
-            $this->challengePrompt = '';
-        }
-    }
-
     public function fillLocalDemoAccount(): void
     {
         if (! app()->environment(['local', 'testing'])) {
@@ -78,16 +59,6 @@ class TokokuLogin extends BaseLogin
         } else {
             $this->email = 'teknisi@tokoku.local';
             $this->password = 'teknisi123';
-        }
-
-        $verifier = app(RecaptchaVerifier::class);
-        if (! $verifier->isGoogleConfigured()) {
-            $expected = $verifier->currentFallbackAnswerForLocalDemo($this->captchaContextKey());
-            if ($expected === null) {
-                $this->refreshSecurityChallenge();
-                $expected = $verifier->currentFallbackAnswerForLocalDemo($this->captchaContextKey());
-            }
-            $this->securityAnswer = (string) ($expected ?? '');
         }
     }
 
@@ -111,23 +82,19 @@ class TokokuLogin extends BaseLogin
         ]);
 
         $verifier = app(RecaptchaVerifier::class);
-        if ($verifier->isGoogleConfigured()) {
-            if (! $verifier->verifyGoogleToken($this->recaptchaToken, request()->ip())) {
-                $this->recaptchaToken = '';
-                $this->dispatch('tokoku-recaptcha-reset');
 
-                throw ValidationException::withMessages([
-                    'recaptchaToken' => 'Selesaikan verifikasi Google reCAPTCHA terlebih dahulu.',
-                ]);
-            }
-        } else {
-            if (! $verifier->verifyFallbackAnswer($this->captchaContextKey(), $this->securityAnswer)) {
-                $this->refreshSecurityChallenge();
+        if ($verifier->isBlockedInProduction()) {
+            throw ValidationException::withMessages([
+                'recaptchaToken' => 'Kunci produksi Google reCAPTCHA belum dikonfigurasi pada server.',
+            ]);
+        }
 
-                throw ValidationException::withMessages([
-                    'securityAnswer' => 'Jawaban verifikasi keamanan belum sesuai. Silakan hitung soal baru di atas.',
-                ]);
-            }
+        if (! $verifier->verifyToken($this->recaptchaToken, request()->ip())) {
+            $this->resetRecaptchaWidget();
+
+            throw ValidationException::withMessages([
+                'recaptchaToken' => 'Centang kotak verifikasi "Saya bukan robot" (Google reCAPTCHA) terlebih dahulu.',
+            ]);
         }
 
         $credentials = [
@@ -136,7 +103,7 @@ class TokokuLogin extends BaseLogin
         ];
 
         if (! Filament::auth()->attempt($credentials, $this->remember)) {
-            $this->resetChallengeAfterFailedAttempt($verifier);
+            $this->resetRecaptchaWidget();
 
             throw ValidationException::withMessages([
                 'email' => 'Email atau kata sandi tidak sesuai, atau akun belum terdaftar pada panel ini.',
@@ -150,14 +117,13 @@ class TokokuLogin extends BaseLogin
             (! $user->canAccessPanel(Filament::getCurrentPanel()))
         ) {
             Filament::auth()->logout();
-            $this->resetChallengeAfterFailedAttempt($verifier);
+            $this->resetRecaptchaWidget();
 
             throw ValidationException::withMessages([
                 'email' => 'Email atau kata sandi tidak sesuai, atau akun tidak memiliki hak akses ke panel ini.',
             ]);
         }
 
-        $verifier->clearFallbackChallenge($this->captchaContextKey());
         session()->regenerate();
 
         return app(LoginResponse::class);
@@ -172,24 +138,16 @@ class TokokuLogin extends BaseLogin
             'panelId' => $panel?->getId() ?? 'admin',
             'hasPasswordReset' => Filament::hasPasswordReset(),
             'passwordResetUrl' => Filament::hasPasswordReset() ? Filament::getRequestPasswordResetUrl() : null,
-            'isGoogleRecaptcha' => $verifier->isGoogleConfigured(),
+            'recaptchaConfigured' => $verifier->isConfigured(),
             'recaptchaSiteKey' => $verifier->siteKey(),
+            'isUsingTestKey' => $verifier->isUsingGoogleTestKey(),
             'isLocalDemoAllowed' => app()->environment(['local', 'testing']),
         ];
     }
 
-    private function captchaContextKey(): string
+    private function resetRecaptchaWidget(): void
     {
-        return 'login_' . (Filament::getCurrentPanel()?->getId() ?? 'panel');
-    }
-
-    private function resetChallengeAfterFailedAttempt(RecaptchaVerifier $verifier): void
-    {
-        if ($verifier->isGoogleConfigured()) {
-            $this->recaptchaToken = '';
-            $this->dispatch('tokoku-recaptcha-reset');
-        } else {
-            $this->refreshSecurityChallenge();
-        }
+        $this->recaptchaToken = '';
+        $this->dispatch('tokoku-recaptcha-reset');
     }
 }

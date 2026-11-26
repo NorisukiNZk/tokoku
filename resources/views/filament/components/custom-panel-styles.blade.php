@@ -896,6 +896,19 @@
         display: flex;
         flex-direction: column;
         gap: 0.6rem;
+        overflow: hidden;
+    }
+
+    .tk-recaptcha-mount {
+        min-height: 78px;
+    }
+
+    @media (max-width: 420px) {
+        .tk-recaptcha-mount {
+            transform: scale(0.85);
+            transform-origin: left top;
+            min-height: 66px;
+        }
     }
 
     .tk-auth-captcha-row {

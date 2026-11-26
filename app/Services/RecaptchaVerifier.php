@@ -7,7 +7,9 @@ use Throwable;
 
 class RecaptchaVerifier
 {
-    public function isGoogleConfigured(): bool
+    public const GOOGLE_PUBLIC_TEST_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+
+    public function isConfigured(): bool
     {
         return filled(config('services.recaptcha.site_key'))
             && filled(config('services.recaptcha.secret_key'));
@@ -15,47 +17,27 @@ class RecaptchaVerifier
 
     public function siteKey(): string
     {
-        return (string) config('services.recaptcha.site_key', '');
+        return trim((string) config('services.recaptcha.site_key', ''));
     }
 
-    public function generateFallbackChallenge(string $contextKey): string
+    public function isUsingGoogleTestKey(): bool
     {
-        $a = random_int(2, 9);
-        $b = random_int(2, 9);
-
-        session()->put($this->sessionKey($contextKey), $a + $b);
-
-        return "Berapa hasil {$a} + {$b}?";
+        return $this->siteKey() === self::GOOGLE_PUBLIC_TEST_SITE_KEY;
     }
 
-    public function currentFallbackAnswerForLocalDemo(string $contextKey): ?int
+    public function isBlockedInProduction(): bool
     {
-        $val = session($this->sessionKey($contextKey));
-
-        return $val !== null ? (int) $val : null;
+        return app()->isProduction() && (! $this->isConfigured() || $this->isUsingGoogleTestKey());
     }
 
-    public function verifyFallbackAnswer(string $contextKey, mixed $answer): bool
+    public function verifyToken(?string $token, ?string $ip = null): bool
     {
-        $expected = session($this->sessionKey($contextKey));
-        $cleaned = trim((string) $answer);
-
-        if ($expected === null || $cleaned === '' || ! preg_match('/^-?\d+$/', $cleaned)) {
+        if ($this->isBlockedInProduction()) {
             return false;
         }
 
-        return (int) $cleaned === (int) $expected;
-    }
-
-    public function clearFallbackChallenge(string $contextKey): void
-    {
-        session()->forget($this->sessionKey($contextKey));
-    }
-
-    public function verifyGoogleToken(?string $token, ?string $ip = null): bool
-    {
         $cleanToken = trim((string) $token);
-        $secret = (string) config('services.recaptcha.secret_key', '');
+        $secret = trim((string) config('services.recaptcha.secret_key', ''));
 
         if ($cleanToken === '' || $secret === '') {
             return false;
@@ -78,10 +60,5 @@ class RecaptchaVerifier
         } catch (Throwable) {
             return false;
         }
-    }
-
-    private function sessionKey(string $contextKey): string
-    {
-        return 'tokoku.security_challenge.' . $contextKey;
     }
 }

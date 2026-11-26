@@ -208,46 +208,32 @@ class TokokuProductionHardeningTest extends TestCase
 
     public function test_split_screen_login_and_recaptcha_verification_work(): void
     {
+        config([
+            'services.recaptcha.site_key' => 'mock-site-key',
+            'services.recaptcha.secret_key' => 'mock-secret-key',
+        ]);
+
         $this->get('/admin/login')
             ->assertOk()
             ->assertSee('Pusat Kendali Katalog')
             ->assertSee('Lupa kata sandi?')
-            ->assertSee('Verifikasi Keamanan (reCAPTCHA)')
+            ->assertSee('Verifikasi Google reCAPTCHA')
+            ->assertSee('google.com/recaptcha/api.js', false)
             ->assertSee('Buka Login Teknisi');
 
         $this->get('/teknisi/login')
             ->assertOk()
             ->assertSee('Papan Antrean Servis')
             ->assertSee('Lupa kata sandi?')
+            ->assertSee('Verifikasi Google reCAPTCHA')
             ->assertSee('Buka Login Admin');
 
         Filament::setCurrentPanel(Filament::getPanel('admin'));
 
-        Livewire::test(TokokuLogin::class)
-            ->set('email', 'admin@tokoku.local')
-            ->set('password', 'admin123')
-            ->set('securityAnswer', '999')
-            ->call('authenticate')
-            ->assertHasErrors(['securityAnswer']);
-
-        $this->assertGuest();
-
-        Livewire::test(TokokuLogin::class)
-            ->call('fillLocalDemoAccount')
-            ->call('authenticate')
-            ->assertHasNoErrors();
-
-        $this->assertAuthenticated();
-        auth()->logout();
-        $this->flushSession();
-
-        config([
-            'services.recaptcha.site_key' => 'mock-site-key',
-            'services.recaptcha.secret_key' => 'mock-secret-key',
-        ]);
-
         Http::fake([
-            'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true], 200),
+            'https://www.google.com/recaptcha/api/siteverify' => Http::sequence()
+                ->push(['success' => false], 200)
+                ->push(['success' => true], 200),
         ]);
 
         Livewire::test(TokokuLogin::class)
@@ -257,10 +243,20 @@ class TokokuProductionHardeningTest extends TestCase
             ->call('authenticate')
             ->assertHasErrors(['recaptchaToken']);
 
+        $this->assertGuest();
+
         Livewire::test(TokokuLogin::class)
             ->set('email', 'admin@tokoku.local')
             ->set('password', 'admin123')
-            ->set('recaptchaToken', 'mock-valid-google-token')
+            ->set('recaptchaToken', 'rejected-token')
+            ->call('authenticate')
+            ->assertHasErrors(['recaptchaToken']);
+
+        $this->assertGuest();
+
+        Livewire::test(TokokuLogin::class)
+            ->call('fillLocalDemoAccount')
+            ->set('recaptchaToken', 'valid-google-token')
             ->call('authenticate')
             ->assertHasNoErrors();
 
@@ -269,10 +265,20 @@ class TokokuProductionHardeningTest extends TestCase
 
     public function test_forgot_password_and_reset_password_flow_work_for_staff(): void
     {
+        config([
+            'services.recaptcha.site_key' => 'mock-site-key',
+            'services.recaptcha.secret_key' => 'mock-secret-key',
+        ]);
+
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true], 200),
+        ]);
+
         $this->get('/admin/password-reset/request')
             ->assertOk()
             ->assertSee('Atur Ulang Kata Sandi Instan')
-            ->assertSee('PIN Pemulihan 6 Digit');
+            ->assertSee('PIN Pemulihan 6 Digit')
+            ->assertSee('Verifikasi Google reCAPTCHA');
 
         $this->get('/teknisi/password-reset/request')
             ->assertOk()
@@ -282,19 +288,17 @@ class TokokuProductionHardeningTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         $admin = User::query()->where('email', 'admin@tokoku.local')->firstOrFail();
 
-        $wrongAttempt = Livewire::test(TokokuRequestPasswordReset::class);
-        $challengeAns = session('tokoku.security_challenge.reset_admin');
-
-        $wrongAttempt
+        Livewire::test(TokokuRequestPasswordReset::class)
             ->set('email', 'admin@tokoku.local')
             ->set('recoveryPin', '000000')
-            ->set('securityAnswer', (string) $challengeAns)
+            ->set('recaptchaToken', 'valid-google-token')
             ->call('verifyPinAndProceed')
             ->assertHasErrors(['recoveryPin'])
             ->assertSet('verifiedUserId', null);
 
         Livewire::test(TokokuRequestPasswordReset::class)
             ->call('fillLocalDemoRecovery')
+            ->set('recaptchaToken', 'valid-google-token')
             ->call('verifyPinAndProceed')
             ->assertHasNoErrors()
             ->assertSet('verifiedUserId', $admin->id)
@@ -309,13 +313,10 @@ class TokokuProductionHardeningTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('teknisi'));
         $tech = User::query()->where('email', 'teknisi@tokoku.local')->firstOrFail();
 
-        $masterComp = Livewire::test(TokokuRequestPasswordReset::class);
-        $techChallenge = session('tokoku.security_challenge.reset_teknisi');
-
-        $masterComp
+        Livewire::test(TokokuRequestPasswordReset::class)
             ->set('email', 'teknisi@tokoku.local')
             ->set('recoveryPin', 'DARURAT-TOKO-99')
-            ->set('securityAnswer', (string) $techChallenge)
+            ->set('recaptchaToken', 'valid-google-token')
             ->call('verifyPinAndProceed')
             ->assertHasNoErrors()
             ->assertSet('verifiedUserId', $tech->id)

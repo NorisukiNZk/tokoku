@@ -82,9 +82,9 @@
 
         <span class="sr-only">Verifikasi Keamanan</span>
         @include('filament.components.recaptcha-box', [
-            'isGoogleRecaptcha' => $isGoogleRecaptcha,
+            'recaptchaConfigured' => $recaptchaConfigured,
             'recaptchaSiteKey' => $recaptchaSiteKey,
-            'challengePrompt' => $challengePrompt,
+            'isUsingTestKey' => $isUsingTestKey,
         ])
 
         <label style="display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.5rem; font-size: 0.84rem; color: var(--tk-ink); cursor: pointer;">
