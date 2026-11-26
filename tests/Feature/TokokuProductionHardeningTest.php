@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\Auth\TokokuLogin;
+use App\Filament\Pages\Auth\TokokuRequestPasswordReset;
+use App\Filament\Pages\Auth\TokokuResetPassword;
 use App\Livewire\PcBuilderWorkbench;
 use App\Livewire\ServiceCenterPage;
 use App\Models\PcCatalogPart;
@@ -9,8 +12,15 @@ use App\Models\Product;
 use App\Models\ServiceTicket;
 use App\Models\ServiceTicketPart;
 use App\Models\StoreSetting;
+use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Facades\Filament;
+use Filament\Notifications\Auth\ResetPassword as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -194,5 +204,107 @@ class TokokuProductionHardeningTest extends TestCase
         Livewire::test(PcBuilderWorkbench::class)
             ->call('chooseComponent', 'cpu', $catalogCpu->id)
             ->assertSee('Ready di Stok Toko');
+    }
+
+    public function test_split_screen_login_and_recaptcha_verification_work(): void
+    {
+        $this->get('/admin/login')
+            ->assertOk()
+            ->assertSee('Pusat Kendali Katalog')
+            ->assertSee('Lupa kata sandi?')
+            ->assertSee('Verifikasi Keamanan (reCAPTCHA)')
+            ->assertSee('Buka Login Teknisi');
+
+        $this->get('/teknisi/login')
+            ->assertOk()
+            ->assertSee('Papan Antrean Servis')
+            ->assertSee('Lupa kata sandi?')
+            ->assertSee('Buka Login Admin');
+
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        Livewire::test(TokokuLogin::class)
+            ->set('email', 'admin@tokoku.local')
+            ->set('password', 'admin123')
+            ->set('securityAnswer', '999')
+            ->call('authenticate')
+            ->assertHasErrors(['securityAnswer']);
+
+        $this->assertGuest();
+
+        Livewire::test(TokokuLogin::class)
+            ->call('fillLocalDemoAccount')
+            ->call('authenticate')
+            ->assertHasNoErrors();
+
+        $this->assertAuthenticated();
+        auth()->logout();
+        $this->flushSession();
+
+        config([
+            'services.recaptcha.site_key' => 'mock-site-key',
+            'services.recaptcha.secret_key' => 'mock-secret-key',
+        ]);
+
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true], 200),
+        ]);
+
+        Livewire::test(TokokuLogin::class)
+            ->set('email', 'admin@tokoku.local')
+            ->set('password', 'admin123')
+            ->set('recaptchaToken', '')
+            ->call('authenticate')
+            ->assertHasErrors(['recaptchaToken']);
+
+        Livewire::test(TokokuLogin::class)
+            ->set('email', 'admin@tokoku.local')
+            ->set('password', 'admin123')
+            ->set('recaptchaToken', 'mock-valid-google-token')
+            ->call('authenticate')
+            ->assertHasNoErrors();
+
+        $this->assertAuthenticated();
+    }
+
+    public function test_forgot_password_and_reset_password_flow_work_for_staff(): void
+    {
+        Notification::fake();
+
+        $this->get('/admin/password-reset/request')
+            ->assertOk()
+            ->assertSee('Pulihkan Kata Sandi Akun');
+
+        $this->get('/teknisi/password-reset/request')
+            ->assertOk()
+            ->assertSee('Pulihkan Kata Sandi Akun');
+
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $admin = User::query()->where('email', 'admin@tokoku.local')->firstOrFail();
+
+        $resetComp = Livewire::test(TokokuRequestPasswordReset::class);
+        $expectedAnswer = session('tokoku.security_challenge.reset_admin');
+
+        $resetComp
+            ->set('email', 'admin@tokoku.local')
+            ->set('securityAnswer', (string) $expectedAnswer)
+            ->call('request')
+            ->assertHasNoErrors()
+            ->assertSet('resetRequested', true);
+
+        Notification::assertSentTo($admin, ResetPasswordNotification::class);
+
+        $token = Password::broker(Filament::getAuthPasswordBroker())->createToken($admin);
+
+        Livewire::test(TokokuResetPassword::class, [
+            'email' => $admin->email,
+            'token' => $token,
+        ])
+            ->set('password', 'sandibaru2026')
+            ->set('passwordConfirmation', 'sandibaru2026')
+            ->call('resetPassword')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Hash::check('sandibaru2026', $admin->fresh()->password));
     }
 }

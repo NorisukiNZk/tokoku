@@ -2,6 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\TokokuLogin;
+use App\Filament\Pages\Auth\TokokuRequestPasswordReset;
+use App\Filament\Pages\Auth\TokokuResetPassword;
 use App\Filament\Resources\ServiceTicketResource;
 use App\Filament\Teknisi\Pages\WorkshopBoard;
 use Filament\Http\Middleware\Authenticate;
@@ -27,7 +30,8 @@ class TeknisiPanelProvider extends PanelProvider
         return $panel
             ->id('teknisi')
             ->path('teknisi')
-            ->login()
+            ->login(TokokuLogin::class)
+            ->passwordReset(TokokuRequestPasswordReset::class, TokokuResetPassword::class)
             ->spa()
             ->font('Inter')
             ->brandName('Meja Teknisi Tokoku')

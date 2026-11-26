@@ -3,6 +3,9 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\AdminDashboard;
+use App\Filament\Pages\Auth\TokokuLogin;
+use App\Filament\Pages\Auth\TokokuRequestPasswordReset;
+use App\Filament\Pages\Auth\TokokuResetPassword;
 use App\Filament\Teknisi\Pages\WorkshopBoard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -29,7 +32,8 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(TokokuLogin::class)
+            ->passwordReset(TokokuRequestPasswordReset::class, TokokuResetPassword::class)
             ->spa()
             ->font('Inter')
             ->brandName('Tokoku Admin')

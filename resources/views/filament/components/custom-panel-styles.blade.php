@@ -1,3 +1,5 @@
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:700,800" rel="stylesheet" />
 <style>
     :root {
         --tk-canvas: #F4F6F9;
@@ -28,7 +30,7 @@
         --tk-surface: #162032;
         --tk-subtle: #1E293B;
         --tk-border: #2C3A52;
-        --tk-border-strong: #64748B;
+        --tk-border-strong: #7C8EA6;
         --tk-ink: #F8FAFC;
         --tk-muted: #CBD5E1;
         --tk-accent: #FB923C;
@@ -616,5 +618,370 @@
         border-radius: 0.75rem;
         color: var(--tk-muted);
         font-size: 0.83rem;
+    }
+
+    /* Split-Screen Staff Auth Experience */
+    .tk-auth-shell {
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background-color: var(--tk-canvas);
+    }
+
+    @media (min-width: 640px) {
+        .tk-auth-shell {
+            padding: 2rem;
+        }
+    }
+
+    .tk-auth-card {
+        width: 100%;
+        max-width: 64rem;
+        border-radius: 1.25rem;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        background-color: var(--tk-surface);
+        border: 1px solid var(--tk-border);
+        box-shadow: 0 22px 48px -14px rgba(15, 23, 42, 0.22);
+    }
+
+    @media (min-width: 960px) {
+        .tk-auth-card {
+            grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+            min-height: 37rem;
+        }
+    }
+
+    .tk-auth-showcase {
+        background-color: #0F172A;
+        color: #F8FAFC;
+        padding: 1.75rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1.5rem;
+        border-bottom: 1px solid #334155;
+    }
+
+    @media (min-width: 960px) {
+        .tk-auth-showcase {
+            padding: 2.35rem;
+            border-bottom: 0;
+            border-inline-end: 1px solid #334155;
+        }
+    }
+
+    .tk-auth-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.65rem;
+        border-radius: 0.4rem;
+        background-color: #FB923C;
+        color: #0F172A;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        font-weight: 800;
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .tk-auth-showcase-title {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #F8FAFC;
+        line-height: 1.22;
+        letter-spacing: -0.02em;
+        margin: 0.65rem 0 0 0;
+    }
+
+    .tk-auth-showcase-desc {
+        font-size: 0.84rem;
+        color: #CBD5E1;
+        line-height: 1.55;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .tk-auth-art {
+        width: 100%;
+        border-radius: 0.85rem;
+        border: 1px solid #334155;
+        background-color: #0B1220;
+        overflow: hidden;
+    }
+
+    .tk-auth-feature-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .tk-auth-feature-item {
+        background-color: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 0.7rem;
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        font-size: 0.8rem;
+        color: #CBD5E1;
+        line-height: 1.4;
+    }
+
+    .tk-auth-feature-dot {
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 999px;
+        background-color: #FB923C;
+        margin-top: 0.35rem;
+        flex-shrink: 0;
+    }
+
+    .tk-auth-ink-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        min-height: 2.75rem;
+        padding: 0 0.85rem;
+        border-radius: 0.6rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #F8FAFC;
+        background-color: transparent;
+        border: 1px solid #8FA0B8;
+        text-decoration: none;
+        transition: background-color 150ms ease, border-color 150ms ease;
+    }
+
+    .tk-auth-ink-btn:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-color: #FB923C;
+    }
+
+    .tk-auth-form-pane {
+        padding: 1.65rem 1.35rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1.5rem;
+        background-color: var(--tk-surface);
+        color: var(--tk-ink);
+    }
+
+    @media (min-width: 640px) {
+        .tk-auth-form-pane {
+            padding: 2.35rem 2.5rem;
+        }
+    }
+
+    .tk-auth-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .tk-auth-heading {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        font-size: 1.55rem;
+        font-weight: 800;
+        color: var(--tk-ink);
+        margin: 0;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+    }
+
+    .tk-auth-desc {
+        font-size: 0.86rem;
+        color: var(--tk-muted);
+        margin: 0.35rem 0 0 0;
+        line-height: 1.5;
+    }
+
+    .tk-auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.05rem;
+    }
+
+    .tk-auth-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.38rem;
+    }
+
+    .tk-auth-input-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .tk-auth-input {
+        width: 100%;
+        min-height: 2.9rem;
+        padding: 0.55rem 0.9rem 0.55rem 2.55rem;
+        border-radius: 0.65rem;
+        border: 1px solid var(--tk-border-strong);
+        background-color: var(--tk-surface);
+        color: var(--tk-ink);
+        font-size: 0.9rem;
+        transition: border-color 150ms ease;
+    }
+
+    .tk-auth-input-pw {
+        padding-inline-end: 4.5rem;
+    }
+
+    .tk-auth-input:hover,
+    .tk-auth-input:focus {
+        border-color: var(--tk-accent);
+    }
+
+    .tk-auth-input-icon {
+        position: absolute;
+        inset-inline-start: 0.82rem;
+        width: 1.1rem;
+        height: 1.1rem;
+        color: var(--tk-muted);
+        pointer-events: none;
+    }
+
+    .tk-auth-pw-toggle {
+        position: absolute;
+        inset-inline-end: 0.35rem;
+        min-height: 2.25rem;
+        padding: 0 0.65rem;
+        border-radius: 0.45rem;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--tk-muted);
+        font-size: 0.76rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .tk-auth-pw-toggle:hover {
+        color: var(--tk-ink);
+        background-color: var(--tk-subtle);
+    }
+
+    .tk-auth-link {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--tk-accent-soft-fg);
+        text-decoration: none;
+        padding: 0.15rem 0;
+    }
+
+    .tk-auth-link:hover {
+        text-decoration: underline;
+    }
+
+    .tk-auth-captcha-box {
+        background-color: var(--tk-subtle);
+        border: 1px solid var(--tk-border-strong);
+        border-radius: 0.75rem;
+        padding: 0.85rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .tk-auth-captcha-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+    }
+
+    .tk-auth-captcha-input {
+        width: 6.5rem;
+        min-height: 2.65rem;
+        padding: 0.4rem 0.7rem;
+        border-radius: 0.55rem;
+        border: 1px solid var(--tk-border-strong);
+        background-color: var(--tk-surface);
+        color: var(--tk-ink);
+        font-size: 0.92rem;
+        font-weight: 700;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .tk-auth-submit {
+        width: 100%;
+        min-height: 3rem;
+        padding: 0 1.25rem;
+        border-radius: 0.7rem;
+        border: 1px solid transparent;
+        background-color: var(--tk-accent);
+        color: var(--tk-accent-fg);
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: background-color 150ms ease, transform 120ms ease;
+    }
+
+    .tk-auth-submit:hover {
+        background-color: var(--tk-accent-hover);
+    }
+
+    .tk-auth-submit:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+
+    .tk-auth-error {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--tk-err-fg);
+        margin: 0.3rem 0 0 0;
+    }
+
+    .tk-auth-alert-ok {
+        background-color: var(--tk-ok-bg);
+        color: var(--tk-ok-fg);
+        border: 1px solid var(--tk-ok-bd);
+        border-radius: 0.75rem;
+        padding: 0.9rem 1rem;
+        font-size: 0.84rem;
+        line-height: 1.5;
+    }
+
+    .tk-auth-alert-info {
+        background-color: var(--tk-accent-soft);
+        color: var(--tk-accent-soft-fg);
+        border: 1px solid var(--tk-accent);
+        border-radius: 0.75rem;
+        padding: 0.8rem 0.95rem;
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    .tk-auth-input:focus-visible,
+    .tk-auth-captcha-input:focus-visible,
+    .tk-auth-pw-toggle:focus-visible,
+    .tk-auth-submit:focus-visible,
+    .tk-auth-ink-btn:focus-visible,
+    .tk-auth-link:focus-visible {
+        outline: 3px solid var(--tk-accent);
+        outline-offset: 2px;
     }
 </style>
