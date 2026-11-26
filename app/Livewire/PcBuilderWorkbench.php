@@ -7,6 +7,8 @@ use App\Models\PcCatalogPart;
 use App\Models\Product;
 use App\Models\StoreSetting;
 use App\Services\PcCompatibilityService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -268,6 +270,14 @@ class PcBuilderWorkbench extends Component
 
     public function saveBuild(PcCompatibilityService $compat): void
     {
+        $rateKey = 'tokoku:save-build:' . request()->ip();
+        if (RateLimiter::tooManyAttempts($rateKey, 10)) {
+            $seconds = RateLimiter::availableIn($rateKey);
+            $this->addError('buildName', "Terlalu sering menyimpan tautan rakitan. Silakan tunggu {$seconds} detik sebelum membuat link baru.");
+
+            return;
+        }
+
         $this->validate([
             'buildName' => ['required', 'string', 'min:3', 'max:120'],
             'customerName' => ['nullable', 'string', 'max:100'],
@@ -302,6 +312,8 @@ class PcBuilderWorkbench extends Component
             'parts_subtotal' => $evaluation['parts_subtotal'],
             'grand_total' => $evaluation['parts_subtotal'] + $assemblyFee,
         ]);
+
+        RateLimiter::hit($rateKey, 600);
 
         $this->shareCode = $saved->share_code;
         $this->savedShareUrl = route('pc-builder', ['kode' => $saved->share_code]);
@@ -386,6 +398,40 @@ class PcBuilderWorkbench extends Component
             );
         }
 
+        $storeInventoryBySlot = Cache::remember('tokoku.builder.store_products', 120, function () {
+            return Product::query()
+                ->with('category')
+                ->where('show_in_marketplace', true)
+                ->where('availability_status', 'available')
+                ->where('stock', '>', 0)
+                ->get()
+                ->groupBy(fn (Product $p) => (string) ($p->category?->component_slot ?? ''));
+        });
+
+        $storeMatchesByPartId = [];
+        foreach ($selectedParts as $slotKey => $partModel) {
+            if ($partModel) {
+                $slotStoreItems = $storeInventoryBySlot->get($slotKey, collect());
+                $matched = $compat->matchStoreInventoryForSlot($slotStoreItems, $partModel);
+                if ($matched) {
+                    $storeMatchesByPartId[$partModel->id] = $matched;
+                }
+            }
+        }
+
+        if ($this->activePickerSlot) {
+            $slotStoreItems = $storeInventoryBySlot->get($this->activePickerSlot, collect());
+            foreach ($pickerCandidates as $entry) {
+                $candPart = $entry['product'];
+                if (! isset($storeMatchesByPartId[$candPart->id])) {
+                    $matched = $compat->matchStoreInventoryForSlot($slotStoreItems, $candPart);
+                    if ($matched) {
+                        $storeMatchesByPartId[$candPart->id] = $matched;
+                    }
+                }
+            }
+        }
+
         $waLines = ["Halo Admin {$store->store_name}, saya ingin konsultasi / pesan rakitan PC dengan rincian berikut:"];
         if ($this->shareCode !== '') {
             $waLines[] = "Kode Simulasi: {$this->shareCode}";
@@ -393,7 +439,9 @@ class PcBuilderWorkbench extends Component
         foreach (PcCompatibilityService::BUILDER_SLOTS as $slotKey => $meta) {
             $p = $selectedParts[$slotKey] ?? null;
             if ($p) {
-                $waLines[] = "- {$meta['label']}: {$p->name} (Est. {$p->formattedPrice()})";
+                $matchedStore = $storeMatchesByPartId[$p->id] ?? null;
+                $stockSuffix = $matchedStore ? " [Ready Stok Toko: {$matchedStore->formattedPrice()}]" : '';
+                $waLines[] = "- {$meta['label']}: {$p->name} (Est. {$p->formattedPrice()}){$stockSuffix}";
             }
         }
         if ($this->includeAssembly) {
@@ -404,10 +452,20 @@ class PcBuilderWorkbench extends Component
         $waLines[] = "";
         $waLines[] = "Mohon info ketersediaan stok toko atau estimasi pemesanan komponennya.";
 
+        $pageTitle = ($this->shareCode !== '' && $this->buildName !== '')
+            ? "{$this->buildName} ({$this->shareCode}) - Simulasi Rakit PC {$store->store_name}"
+            : 'Simulasi Rakit PC & Harga Part Lengkap - ' . $store->store_name;
+
+        $chosenSummaryNames = collect($selectedParts)->filter()->map(fn ($p) => $p->name)->take(3)->implode(', ');
+        $metaDescription = $chosenSummaryNames !== ''
+            ? 'Rakitan PC (' . $chosenSummaryNames . ') dengan total estimasi Rp ' . number_format($grandTotal, 0, ',', '.') . ' dan daya ' . $evaluation['estimated_wattage'] . 'W di ' . $store->store_name . '.'
+            : "Susun rakitan PC dari {$totalCatalogCount} part referensi dengan diagram casing interaktif, cek kecocokan soket/RAM/PSU otomatis, dan penilai performa di {$store->store_name}.";
+
         return view('livewire.pc-builder-workbench', [
             'store' => $store,
             'slots' => PcCompatibilityService::BUILDER_SLOTS,
             'selectedProducts' => $selectedParts,
+            'storeMatchesByPartId' => $storeMatchesByPartId,
             'evaluation' => $evaluation,
             'performanceProfile' => $performanceProfile,
             'assemblyFee' => $assemblyFee,
@@ -416,6 +474,13 @@ class PcBuilderWorkbench extends Component
             'pickerCandidates' => $pickerCandidates,
             'pickerTotalMatching' => $pickerTotalMatching,
             'whatsappBuildUrl' => $store->whatsappUrl(implode("\n", $waLines)),
-        ])->title('Simulasi Rakit PC & Harga Part Lengkap - ' . $store->store_name);
+        ])
+            ->title($pageTitle)
+            ->layoutData([
+                'metaDescription' => $metaDescription,
+                'canonicalUrl' => $this->shareCode !== ''
+                    ? route('pc-builder', ['kode' => $this->shareCode])
+                    : route('pc-builder'),
+            ]);
     }
 }

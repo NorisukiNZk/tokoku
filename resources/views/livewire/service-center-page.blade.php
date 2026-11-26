@@ -1,5 +1,5 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-    <div class="surface-ink rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="surface-ink rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
         <div class="space-y-1.5">
             <span class="inline-block px-2.5 py-0.5 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-bold text-xs">
                 Workshop &amp; Lacak Resi Transparan
@@ -33,7 +33,7 @@
     </div>
 
     @if($createdTicket && $activeTab === 'tracking')
-        <div class="badge-ok rounded-xl p-5 space-y-2" role="status">
+        <div class="badge-ok rounded-xl p-5 space-y-2 no-print" role="status">
             <p class="font-bold text-base">
                 Pendaftaran berhasil! Nomor Tiket Anda:
                 <span class="font-mono">{{ $createdTicket->ticket_number }}</span>
@@ -104,6 +104,10 @@
                 </div>
 
                 <form wire:submit="submitBooking" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sr-only" aria-hidden="true">
+                        <label for="booking-website-hp">Jangan isi kolom ini</label>
+                        <input id="booking-website-hp" type="text" wire:model="websiteUrl" tabindex="-1" autocomplete="off">
+                    </div>
                     <div>
                         <label for="booking-nama" class="block text-xs font-semibold mb-1.5">Nama Lengkap</label>
                         <input id="booking-nama" type="text" wire:model="customerName" placeholder="Nama pemilik perangkat" class="input-field w-full min-h-11 px-3.5 rounded-lg text-sm">
@@ -171,15 +175,21 @@
                     </div>
 
                     <div class="sm:col-span-2 pt-2">
-                        <button type="submit" class="btn-accent w-full sm:w-auto min-h-11 px-6 rounded-lg text-sm cursor-pointer">
-                            Daftar &amp; Dapatkan Nomor Tiket
+                        <button
+                            type="submit"
+                            wire:loading.attr="disabled"
+                            wire:target="submitBooking"
+                            class="btn-accent w-full sm:w-auto min-h-11 px-6 rounded-lg text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <span wire:loading.remove wire:target="submitBooking">Daftar &amp; Dapatkan Nomor Tiket</span>
+                            <span wire:loading wire:target="submitBooking">Mendaftarkan Jadwal...</span>
                         </button>
                     </div>
                 </form>
             </section>
         </div>
     @else
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start no-print">
             <div class="lg:col-span-4 surface-card rounded-xl p-5 sm:p-6 space-y-4">
                 <div class="space-y-1">
                     <h2 class="text-lg font-bold">Cek Nomor Tiket Servis</h2>
@@ -213,8 +223,14 @@
                     </div>
 
                     <div class="flex flex-col gap-2 pt-1">
-                        <button type="submit" class="btn-accent w-full min-h-11 px-4 rounded-lg text-sm cursor-pointer">
-                            Tampilkan Status Servis
+                        <button
+                            type="submit"
+                            wire:loading.attr="disabled"
+                            wire:target="lookupTicket"
+                            class="btn-accent w-full min-h-11 px-4 rounded-lg text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <span wire:loading.remove wire:target="lookupTicket">Tampilkan Status Servis</span>
+                            <span wire:loading wire:target="lookupTicket">Mencari Resi...</span>
                         </button>
                         <button
                             type="button"
@@ -356,6 +372,13 @@
                             >
                                 Salin Link Lacak
                             </button>
+                            <button
+                                type="button"
+                                onclick="window.print()"
+                                class="btn-secondary min-h-11 px-4 rounded-lg text-sm cursor-pointer"
+                            >
+                                Cetak Bukti Servis / PDF
+                            </button>
                         </div>
                     </div>
                 @else
@@ -368,5 +391,87 @@
                 @endif
             </div>
         </div>
+
+        @if($trackedTicket)
+            <section aria-label="Lembar Cetak Tanda Terima dan Laporan Servis" class="print-only space-y-5">
+                <div class="border-b-2 border-slate-800 pb-3 flex justify-between items-start gap-4">
+                    <div>
+                        <h1 class="text-xl font-extrabold">{{ $store->store_name }} - Bukti &amp; Laporan Servis</h1>
+                        <p class="text-xs text-slate-600">{{ $store->workshop_address }} | WA: {{ $store->whatsapp_number }}</p>
+                    </div>
+                    <div class="text-right text-xs">
+                        <p class="font-mono font-bold text-sm">{{ $trackedTicket->ticket_number }}</p>
+                        <p>Status: <strong>{{ $trackedTicket->statusLabel() }}</strong></p>
+                        <p>Dicetak: {{ now()->format('d M Y, H:i') }}</p>
+                    </div>
+                </div>
+
+                <table class="print-table">
+                    <tbody>
+                        <tr>
+                            <th style="width: 28%;">Nama Pelanggan</th>
+                            <td>{{ $trackedTicket->customer_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Perangkat</th>
+                            <td>{{ $trackedTicket->device_type }} - {{ $trackedTicket->device_brand_model }}</td>
+                        </tr>
+                        <tr>
+                            <th>Keluhan Awal</th>
+                            <td>{{ $trackedTicket->complaint_summary }}</td>
+                        </tr>
+                        @if($trackedTicket->temp_before_c || $trackedTicket->temp_after_c)
+                            <tr>
+                                <th>Pengukuran Suhu</th>
+                                <td>
+                                    Suhu Awal: {{ $trackedTicket->temp_before_c ? $trackedTicket->temp_before_c . '°C' : '-' }}
+                                    | Suhu Setelah QC: {{ $trackedTicket->temp_after_c ? $trackedTicket->temp_after_c . '°C' : '-' }}
+                                </td>
+                            </tr>
+                        @endif
+                        @if($trackedTicket->diagnosis_notes)
+                            <tr>
+                                <th>Hasil Pemeriksaan Teknisi</th>
+                                <td>{{ $trackedTicket->diagnosis_notes }}</td>
+                            </tr>
+                        @endif
+                        @if($trackedTicket->warranty_until)
+                            <tr>
+                                <th>Garansi Servis Hingga</th>
+                                <td>{{ $trackedTicket->warranty_until->format('d M Y') }}</td>
+                            </tr>
+                        @endif
+                    </tbody>
+                </table>
+
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th>Uraian Jasa / Sparepart</th>
+                            <th style="width: 15%;">Qty</th>
+                            <th style="width: 28%; text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Jasa ({{ $trackedTicket->servicePackage?->name ?? 'Pemeriksaan & Servis' }})</td>
+                            <td>1</td>
+                            <td style="text-align: right;" class="tabular-nums">Rp {{ number_format($trackedTicket->service_fee, 0, ',', '.') }}</td>
+                        </tr>
+                        @foreach($trackedTicket->parts as $part)
+                            <tr>
+                                <td>{{ $part->part_name }}</td>
+                                <td>{{ $part->qty }}</td>
+                                <td style="text-align: right;" class="tabular-nums">Rp {{ number_format($part->subtotal, 0, ',', '.') }}</td>
+                            </tr>
+                        @endforeach
+                        <tr>
+                            <td colspan="2" class="font-extrabold">TOTAL BIAYA SERVIS</td>
+                            <td style="text-align: right;" class="tabular-nums font-extrabold">Rp {{ number_format($trackedTicket->grand_total, 0, ',', '.') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        @endif
     @endif
 </div>

@@ -1,13 +1,33 @@
 @php
     $store = \App\Models\StoreSetting::current();
     $logoUrl = $store->logo_path ? '/storage/' . ltrim($store->logo_path, '/') : null;
+    $resolvedTitle = $title ?? ($store->store_name . ' - Jual Beli Part PC, Rakit & Servis');
+    $resolvedDescription = $metaDescription ?? ($store->tagline ?: 'Toko komponen PC baru & second bergaransi toko, simulasi rakit PC interaktif, serta layanan servis komputer transparan.');
+    $resolvedCanonical = $canonicalUrl ?? url()->current();
+    $resolvedMetaType = $metaType ?? 'website';
+    $resolvedMetaImage = !empty($metaImage)
+        ? (str_starts_with($metaImage, 'http') ? $metaImage : url($metaImage))
+        : ($logoUrl ? url($logoUrl) : asset('icons/icon-512.png'));
 @endphp
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>{{ $title ?? $store->store_name . ' - Jual Beli Part PC, Rakit & Servis' }}</title>
+    <title>{{ $resolvedTitle }}</title>
+    <meta name="description" content="{{ $resolvedDescription }}">
+    <link rel="canonical" href="{{ $resolvedCanonical }}">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:site_name" content="{{ $store->store_name }}">
+    <meta property="og:type" content="{{ $resolvedMetaType }}">
+    <meta property="og:title" content="{{ $resolvedTitle }}">
+    <meta property="og:description" content="{{ $resolvedDescription }}">
+    <meta property="og:url" content="{{ $resolvedCanonical }}">
+    <meta property="og:image" content="{{ $resolvedMetaImage }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $resolvedTitle }}">
+    <meta name="twitter:description" content="{{ $resolvedDescription }}">
+    <meta name="twitter:image" content="{{ $resolvedMetaImage }}">
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('icons/apple-touch-icon.png') }}">

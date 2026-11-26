@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
@@ -59,6 +60,23 @@ class Product extends Model
         'booked' => 'Sedang Dipesan (Booked)',
         'sold' => 'Terjual',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            static::flushProductCaches();
+        });
+
+        static::deleted(function () {
+            static::flushProductCaches();
+        });
+    }
+
+    public static function flushProductCaches(): void
+    {
+        Cache::forget('tokoku.nav.products_available');
+        Cache::forget('tokoku.builder.store_products');
+    }
 
     public function category(): BelongsTo
     {

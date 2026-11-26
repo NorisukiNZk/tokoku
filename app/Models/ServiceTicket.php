@@ -2,9 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\SparepartInventoryService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ServiceTicket extends Model
 {
@@ -70,7 +74,7 @@ class ServiceTicket extends Model
     {
         static::creating(function (self $ticket) {
             if (empty($ticket->ticket_number)) {
-                $ticket->ticket_number = static::generateTicketNumber();
+                $ticket->ticket_number = static::generateTicketNumber(DB::transactionLevel() > 0);
             }
             $ticket->grand_total = (int) $ticket->service_fee + (int) $ticket->parts_total;
         });
@@ -78,13 +82,31 @@ class ServiceTicket extends Model
         static::saving(function (self $ticket) {
             $ticket->grand_total = (int) $ticket->service_fee + (int) $ticket->parts_total;
         });
+
+        static::saved(function (self $ticket) {
+            static::flushNavigationCache();
+            if ($ticket->wasChanged('status') && class_exists(SparepartInventoryService::class)) {
+                app(SparepartInventoryService::class)->syncTicketPartsForStatus($ticket);
+            }
+        });
+
+        static::deleted(function () {
+            static::flushNavigationCache();
+        });
     }
 
-    public static function generateTicketNumber(): string
+    public static function flushNavigationCache(): void
+    {
+        Cache::forget('tokoku.nav.tickets_active');
+        Cache::forget('tokoku.nav.tickets_waiting');
+    }
+
+    public static function generateTicketNumber(bool $lock = false): string
     {
         $prefix = 'SRV-' . now()->format('Ym') . '-';
         $latest = static::query()
             ->where('ticket_number', 'like', $prefix . '%')
+            ->when($lock, fn ($query) => $query->lockForUpdate())
             ->orderByDesc('id')
             ->value('ticket_number');
 
@@ -94,6 +116,48 @@ class ServiceTicket extends Model
         }
 
         return $prefix . str_pad((string) $nextSequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Create a service ticket and its initial public log atomically with retry on unique ticket_number collision.
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public static function createBookingWithInitialLog(array $attributes, string $initialNote): self
+    {
+        $attempts = 0;
+
+        while (true) {
+            $attempts++;
+            try {
+                return DB::transaction(function () use ($attributes, $initialNote) {
+                    $payload = $attributes;
+                    if (empty($payload['ticket_number'])) {
+                        $payload['ticket_number'] = static::generateTicketNumber(true);
+                    }
+
+                    $ticket = static::query()->create($payload);
+
+                    ServiceTicketLog::query()->create([
+                        'service_ticket_id' => $ticket->id,
+                        'status' => $ticket->status ?? 'booked',
+                        'note' => $initialNote,
+                        'is_public' => true,
+                    ]);
+
+                    return $ticket;
+                });
+            } catch (QueryException $e) {
+                $isUniqueCollision = str_contains(strtolower($e->getMessage()), 'unique')
+                    || str_contains(strtolower($e->getMessage()), 'duplicate');
+
+                if ($isUniqueCollision && $attempts < 3 && empty($attributes['ticket_number'])) {
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
     }
 
     public function servicePackage(): BelongsTo

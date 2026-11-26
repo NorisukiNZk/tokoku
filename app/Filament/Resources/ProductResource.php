@@ -11,6 +11,7 @@ use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class ProductResource extends Resource
@@ -39,7 +40,12 @@ class ProductResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return (string) Product::query()->where('availability_status', 'available')->where('stock', '>', 0)->count();
+        $count = Cache::remember('tokoku.nav.products_available', 60, fn () => Product::query()
+            ->where('availability_status', 'available')
+            ->where('stock', '>', 0)
+            ->count());
+
+        return (string) $count;
     }
 
     public static function getNavigationIcon(): string
@@ -138,17 +144,29 @@ class ProductResource extends Resource
                 ]),
 
             Forms\Components\Section::make('Foto Produk')
+                ->description('Maksimal 2 MB per foto. Gambar beresolusi besar otomatis disesuaikan agar katalog tetap ringan.')
                 ->columns(2)
                 ->schema([
                     Forms\Components\FileUpload::make('primary_image')
                         ->label('Foto Utama')
                         ->image()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                        ->maxSize(2048)
+                        ->imageResizeMode('contain')
+                        ->imageResizeTargetWidth('1280')
+                        ->imageResizeTargetHeight('960')
                         ->disk('public')
                         ->directory('products'),
                     Forms\Components\FileUpload::make('gallery_images')
-                        ->label('Foto Sudut Tambahan (Opsional)')
+                        ->label('Foto Sudut Tambahan (Maks. 5 Foto)')
                         ->image()
                         ->multiple()
+                        ->maxFiles(5)
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                        ->maxSize(2048)
+                        ->imageResizeMode('contain')
+                        ->imageResizeTargetWidth('1280')
+                        ->imageResizeTargetHeight('960')
                         ->disk('public')
                         ->directory('products'),
                 ]),

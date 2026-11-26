@@ -9,6 +9,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 
 class WorkshopBoard extends Page
@@ -39,16 +40,18 @@ class WorkshopBoard extends Page
 
     public static function getNavigationBadge(): ?string
     {
-        $count = ServiceTicket::query()
+        $count = Cache::remember('tokoku.nav.tickets_active', 60, fn () => ServiceTicket::query()
             ->whereIn('status', ['booked', 'diagnosing', 'waiting_approval', 'in_progress', 'testing_qc', 'ready'])
-            ->count();
+            ->count());
 
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        $waiting = ServiceTicket::query()->where('status', 'waiting_approval')->count();
+        $waiting = Cache::remember('tokoku.nav.tickets_waiting', 60, fn () => ServiceTicket::query()
+            ->where('status', 'waiting_approval')
+            ->count());
 
         return $waiting > 0 ? 'warning' : 'primary';
     }

@@ -16,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class ServiceTicketResource extends Resource
 {
@@ -43,16 +44,20 @@ class ServiceTicketResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $active = ServiceTicket::query()
+        $active = Cache::remember('tokoku.nav.tickets_active', 60, fn () => ServiceTicket::query()
             ->whereIn('status', ['booked', 'diagnosing', 'waiting_approval', 'in_progress', 'testing_qc', 'ready'])
-            ->count();
+            ->count());
 
         return $active > 0 ? (string) $active : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return ServiceTicket::query()->where('status', 'waiting_approval')->exists() ? 'danger' : 'primary';
+        $waiting = Cache::remember('tokoku.nav.tickets_waiting', 60, fn () => ServiceTicket::query()
+            ->where('status', 'waiting_approval')
+            ->count());
+
+        return $waiting > 0 ? 'danger' : 'primary';
     }
 
     public static function form(Form $form): Form

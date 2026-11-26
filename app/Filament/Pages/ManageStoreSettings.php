@@ -79,8 +79,10 @@ class ManageStoreSettings extends Page implements HasForms
                             ->default(16500)
                             ->required(),
                         FileUpload::make('logo_path')
-                            ->label('Logo Resmi Toko (Opsional, PNG/SVG)')
+                            ->label('Logo Resmi Toko (Opsional, PNG/SVG, Maks. 1 MB)')
                             ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                            ->maxSize(1024)
                             ->directory('branding')
                             ->disk('public'),
                     ]),

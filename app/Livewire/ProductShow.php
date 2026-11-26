@@ -46,10 +46,22 @@ class ProductShow extends Component
             ->limit(4)
             ->get();
 
+        $store = StoreSetting::current();
+        $negoLabel = $this->product->is_negotiable ? 'Bisa Nego' : 'Harga Nett';
+        $warrantyText = $this->product->warranty_info ?: 'Garansi cek langsung di workshop';
+        $metaDesc = "{$this->product->formattedPrice()} ({$negoLabel}) · Kondisi {$this->product->conditionLabel()} · {$warrantyText} · Lokasi {$this->product->location_area}.";
+
         return view('livewire.product-show', [
-            'store' => StoreSetting::current(),
+            'store' => $store,
             'galleryUrls' => $galleryUrls,
             'related' => $related,
-        ])->title($this->product->name . ' - ' . StoreSetting::current()->store_name);
+        ])
+            ->title($this->product->name . ' (' . $this->product->formattedPrice() . ') - ' . $store->store_name)
+            ->layoutData([
+                'metaDescription' => $metaDesc,
+                'metaImage' => $this->product->primaryImageUrl(),
+                'metaType' => 'product',
+                'canonicalUrl' => route('product.show', $this->product->slug),
+            ]);
     }
 }

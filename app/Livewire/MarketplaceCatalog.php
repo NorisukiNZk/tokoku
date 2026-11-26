@@ -143,12 +143,19 @@ class MarketplaceCatalog extends Component
 
         $catalogPartsCount = PcCatalogPart::query()->count();
 
+        $store = StoreSetting::current();
+
         return view('livewire.marketplace-catalog', [
-            'store' => StoreSetting::current(),
+            'store' => $store,
             'categories' => $categories,
             'products' => $query->paginate(12),
             'featuredProduct' => $featuredProduct,
             'catalogPartsCount' => $catalogPartsCount,
-        ])->title(StoreSetting::current()->store_name . ' - Etalase Part PC Baru & Bekas');
+        ])
+            ->title($store->store_name . ' - Etalase Part PC Baru & Bekas')
+            ->layoutData([
+                'metaDescription' => "Jual beli komponen PC baru & second bergaransi di {$store->store_name}. Bandingkan spesifikasi, simulasi rakit {$catalogPartsCount} part PC, dan cek resi servis secara langsung.",
+                'metaImage' => $featuredProduct?->primaryImageUrl(),
+            ]);
     }
 }

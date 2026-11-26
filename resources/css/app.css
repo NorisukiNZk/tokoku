@@ -388,6 +388,10 @@ textarea {
     }
 }
 
+.print-only {
+    display: none;
+}
+
 @media print {
     header,
     footer,
@@ -397,9 +401,29 @@ textarea {
     .no-print {
         display: none !important;
     }
+    .print-only {
+        display: block !important;
+    }
     body {
         background: #FFFFFF !important;
-        color: #000000 !important;
+        color: #0F172A !important;
         padding-bottom: 0 !important;
+        font-size: 12px;
+        line-height: 1.45;
+    }
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .print-table th,
+    .print-table td {
+        border: 1px solid #CBD5E1;
+        padding: 7px 10px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .print-table th {
+        background: #F1F5F9 !important;
+        font-weight: 700;
     }
 }

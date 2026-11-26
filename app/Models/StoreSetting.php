@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
 class StoreSetting extends Model
 {
+    public const CACHE_KEY = 'tokoku.store_setting';
+
     protected $fillable = [
         'store_name',
         'tagline',
@@ -31,8 +34,29 @@ class StoreSetting extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            static::flushCache();
+        });
+
+        static::deleted(function () {
+            static::flushCache();
+        });
+    }
+
+    public static function flushCache(): void
+    {
+        app()->forgetInstance(self::CACHE_KEY);
+        Cache::forget(self::CACHE_KEY);
+    }
+
     public static function current(): self
     {
+        if (app()->bound(self::CACHE_KEY)) {
+            return app(self::CACHE_KEY);
+        }
+
         if (! Schema::hasTable('store_settings')) {
             return new self([
                 'store_name' => 'Tokoku',
@@ -45,16 +69,22 @@ class StoreSetting extends Model
             ]);
         }
 
-        return static::query()->first() ?? static::query()->create([
-            'store_name' => 'Tokoku',
-            'tagline' => 'Jual Beli Part PC Baru & Bekas, Bengkel Servis, dan Rakit PC',
-            'whatsapp_number' => '6280000000000',
-            'workshop_address' => '[ALAMAT WORKSHOP: Ubah di Pengaturan Toko]',
-            'cod_areas' => 'Ambil di workshop atau COD lokal sesuai kesepakatan',
-            'operating_hours' => 'Senin - Sabtu, 09:00 - 18:00',
-            'default_assembly_fee' => 150000,
-            'is_placeholder_data' => true,
-        ]);
+        $setting = Cache::remember(self::CACHE_KEY, 3600, function () {
+            return static::query()->first() ?? static::query()->create([
+                'store_name' => 'Tokoku',
+                'tagline' => 'Jual Beli Part PC Baru & Bekas, Bengkel Servis, dan Rakit PC',
+                'whatsapp_number' => '6280000000000',
+                'workshop_address' => '[ALAMAT WORKSHOP: Ubah di Pengaturan Toko]',
+                'cod_areas' => 'Ambil di workshop atau COD lokal sesuai kesepakatan',
+                'operating_hours' => 'Senin - Sabtu, 09:00 - 18:00',
+                'default_assembly_fee' => 150000,
+                'is_placeholder_data' => true,
+            ]);
+        });
+
+        app()->instance(self::CACHE_KEY, $setting);
+
+        return $setting;
     }
 
     public function whatsappUrl(string $message): string

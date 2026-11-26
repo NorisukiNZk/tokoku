@@ -27,7 +27,7 @@
     @keydown.escape.window="$wire.closeSlotPicker()"
     class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 pb-24 lg:pb-8 space-y-6"
 >
-    <section aria-label="Studio Diagram Casing PC Interaktif dan Penilai Performa" class="surface-ink rounded-2xl p-4 sm:p-6 space-y-5">
+    <section aria-label="Studio Diagram Casing PC Interaktif dan Penilai Performa" class="surface-ink rounded-2xl p-4 sm:p-6 space-y-5 no-print">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--ink-panel-border)] pb-4">
             <div class="space-y-1.5">
                 <div class="flex flex-wrap items-center gap-2">
@@ -344,7 +344,7 @@
         Memproses daftar komponen dan kecocokan spesifikasi...
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start no-print">
         <section aria-label="Urutan Pemilihan Komponen PC" class="lg:col-span-8 space-y-3.5">
             <div class="surface-subtle rounded-xl px-4 py-3 flex items-center justify-between gap-4 text-sm">
                 <span class="font-semibold">Kelengkapan Komponen Utama</span>
@@ -355,6 +355,8 @@
                 @php
                     /** @var \App\Models\PcCatalogPart|null $chosen */
                     $chosen = $selectedProducts[$slotKey] ?? null;
+                    /** @var \App\Models\Product|null $matchedStoreItem */
+                    $matchedStoreItem = $chosen ? ($storeMatchesByPartId[$chosen->id] ?? null) : null;
                 @endphp
                 <div class="surface-card rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
                     <div class="flex items-start gap-3.5 flex-1 min-w-0">
@@ -388,6 +390,15 @@
                                     <span class="font-display font-bold text-sm tabular-nums text-[var(--text-primary)]">
                                         {{ $chosen->formattedPrice() }}
                                     </span>
+                                    @if($matchedStoreItem)
+                                        <a
+                                            href="{{ route('product.show', $matchedStoreItem->slug) }}"
+                                            wire:navigate
+                                            class="badge-ok px-2.5 py-0.5 rounded-md font-semibold hover:underline"
+                                        >
+                                            Ready di Stok Toko ({{ $matchedStoreItem->formattedPrice() }})
+                                        </a>
+                                    @endif
                                 </div>
                             @else
                                 <p class="text-xs sm:text-sm text-muted-ink">{{ $meta['hint'] }}</p>
@@ -544,8 +555,14 @@
                         >
                     </div>
 
-                    <button type="submit" class="btn-secondary w-full min-h-11 px-4 rounded-lg text-sm cursor-pointer">
-                        Buat Link Rakitan
+                    <button
+                        type="submit"
+                        wire:loading.attr="disabled"
+                        wire:target="saveBuild"
+                        class="btn-secondary w-full min-h-11 px-4 rounded-lg text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        <span wire:loading.remove wire:target="saveBuild">Buat Link Rakitan</span>
+                        <span wire:loading wire:target="saveBuild">Menyimpan Link...</span>
                     </button>
                 </form>
 
@@ -591,6 +608,80 @@
             Lihat Ringkasan
         </a>
     </div>
+
+    <section aria-label="Lembar Cetak Penawaran Rakitan PC" class="print-only space-y-5">
+        <div class="border-b-2 border-slate-800 pb-3 flex justify-between items-start gap-4">
+            <div>
+                <h1 class="text-xl font-extrabold">{{ $store->store_name }} - Lembar Estimasi Rakitan PC</h1>
+                <p class="text-xs text-slate-600">{{ $store->workshop_address }} | WA: {{ $store->whatsapp_number }}</p>
+            </div>
+            <div class="text-right text-xs">
+                <p class="font-bold">Tanggal Cetak: {{ now()->format('d M Y, H:i') }}</p>
+                @if($shareCode !== '')
+                    <p class="font-mono font-semibold">Kode Simulasi: {{ $shareCode }}</p>
+                @endif
+                @if($buildName !== '')
+                    <p>Nama Rakitan: {{ $buildName }}</p>
+                @endif
+                @if($customerName !== '')
+                    <p>Pemesan: {{ $customerName }}</p>
+                @endif
+            </div>
+        </div>
+
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width: 24%;">Slot Komponen</th>
+                    <th style="width: 48%;">Nama Komponen &amp; Spesifikasi</th>
+                    <th style="width: 28%; text-align: right;">Estimasi Harga</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($slots as $slotKey => $meta)
+                    @php
+                        $p = $selectedProducts[$slotKey] ?? null;
+                        $matchedStore = $p ? ($storeMatchesByPartId[$p->id] ?? null) : null;
+                    @endphp
+                    <tr>
+                        <td class="font-semibold">{{ $meta['label'] }}</td>
+                        <td>
+                            @if($p)
+                                <div class="font-semibold">{{ $p->name }}</div>
+                                @if($matchedStore)
+                                    <div class="text-[11px]">Tersedia di stok fisik toko ({{ $matchedStore->formattedPrice() }})</div>
+                                @endif
+                            @else
+                                <span class="text-slate-500">Belum dipilih</span>
+                            @endif
+                        </td>
+                        <td style="text-align: right;" class="tabular-nums font-semibold">
+                            {{ $p ? $p->formattedPrice() : '-' }}
+                        </td>
+                    </tr>
+                @endforeach
+                <tr>
+                    <td colspan="2" class="font-semibold">Subtotal Komponen</td>
+                    <td style="text-align: right;" class="tabular-nums font-semibold">Rp {{ number_format($evaluation['parts_subtotal'], 0, ',', '.') }}</td>
+                </tr>
+                @if($includeAssembly)
+                    <tr>
+                        <td colspan="2">Jasa Perakitan, Manajemen Kabel, &amp; Uji Suhu</td>
+                        <td style="text-align: right;" class="tabular-nums">Rp {{ number_format($assemblyFee, 0, ',', '.') }}</td>
+                    </tr>
+                @endif
+                <tr>
+                    <td colspan="2" class="font-extrabold">TOTAL ESTIMASI ANGGARAN</td>
+                    <td style="text-align: right;" class="tabular-nums font-extrabold">Rp {{ number_format($grandTotal, 0, ',', '.') }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="text-xs space-y-1 border-t border-slate-300 pt-3">
+            <p><strong>Ringkasan Teknis:</strong> Kelas {{ $performanceProfile['tier_label'] }} | Estimasi beban daya {{ $evaluation['estimated_wattage'] }}W (Saran PSU minimal {{ $evaluation['recommended_psu_wattage'] }}W) | Status kecocokan: {{ $evaluation['passed'] ? 'Komponen Saling Cocok' : 'Perlu Pemeriksaan Ulang' }}.</p>
+            <p class="text-slate-600">Catatan: Harga part referensi menyesuaikan kurs dan ketersediaan stok harian saat pemesanan di {{ $store->store_name }}.</p>
+        </div>
+    </section>
 
     @if($activePickerSlot)
         <div
@@ -684,6 +775,8 @@
                                 /** @var \App\Models\PcCatalogPart $cand */
                                 $cand = $entry['product'];
                                 $isCompatible = $entry['compatible'];
+                                /** @var \App\Models\Product|null $candStoreMatch */
+                                $candStoreMatch = $storeMatchesByPartId[$cand->id] ?? null;
                             @endphp
                             <div class="surface-subtle rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div class="space-y-1 min-w-0">
@@ -695,6 +788,11 @@
                                         } }}">
                                             {{ $cand->tierLabel() }}
                                         </span>
+                                        @if($candStoreMatch)
+                                            <span class="badge-ok px-2 py-0.5 rounded-md text-xs font-semibold">
+                                                Ready di Stok Toko ({{ $candStoreMatch->formattedPrice() }})
+                                            </span>
+                                        @endif
                                         @foreach($cand->specBadges() as $b)
                                             <span class="surface-card px-2 py-0.5 rounded-md text-xs text-muted-ink">{{ $b }}</span>
                                         @endforeach

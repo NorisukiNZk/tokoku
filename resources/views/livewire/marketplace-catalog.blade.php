@@ -165,8 +165,14 @@
                                 >
                             </div>
                             <div class="col-span-7 sm:col-span-3">
-                                <button type="submit" class="btn-ink-outline w-full min-h-11 px-3 rounded-lg text-xs sm:text-sm cursor-pointer">
-                                    Cek
+                                <button
+                                    type="submit"
+                                    wire:loading.attr="disabled"
+                                    wire:target="quickCheckTicket"
+                                    class="btn-ink-outline w-full min-h-11 px-3 rounded-lg text-xs sm:text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    <span wire:loading.remove wire:target="quickCheckTicket">Cek</span>
+                                    <span wire:loading wire:target="quickCheckTicket">...</span>
                                 </button>
                             </div>
                         </form>
@@ -354,8 +360,14 @@
                             >
                         </div>
                         <div class="col-span-7">
-                            <button type="submit" class="btn-secondary w-full min-h-11 px-3 rounded-lg text-sm cursor-pointer">
-                                Cek Status
+                            <button
+                                type="submit"
+                                wire:loading.attr="disabled"
+                                wire:target="quickCheckTicket"
+                                class="btn-secondary w-full min-h-11 px-3 rounded-lg text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                <span wire:loading.remove wire:target="quickCheckTicket">Cek Status</span>
+                                <span wire:loading wire:target="quickCheckTicket">Memuat...</span>
                             </button>
                         </div>
                     </div>

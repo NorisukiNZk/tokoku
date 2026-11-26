@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\ServiceTicketResource\RelationManagers;
 
 use App\Models\Product;
+use App\Models\ServiceTicketPart;
+use Closure;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -20,7 +23,22 @@ class PartsRelationManager extends RelationManager
         return $form->schema([
             Forms\Components\Select::make('product_id')
                 ->label('Ambil dari Stok Katalog (Opsional)')
-                ->options(fn () => Product::query()->where('stock', '>', 0)->pluck('name', 'id'))
+                ->options(function (?ServiceTicketPart $record) {
+                    $currentProductId = $record?->product_id;
+
+                    return Product::query()
+                        ->where(function ($q) use ($currentProductId) {
+                            $q->where('stock', '>', 0);
+                            if ($currentProductId) {
+                                $q->orWhere('id', $currentProductId);
+                            }
+                        })
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (Product $p) => [
+                            $p->id => "{$p->name} (Sisa stok: {$p->stock})",
+                        ]);
+                })
                 ->searchable()
                 ->live()
                 ->afterStateUpdated(function (?string $state, Set $set) {
@@ -40,6 +58,25 @@ class PartsRelationManager extends RelationManager
                 ->numeric()
                 ->default(1)
                 ->minValue(1)
+                ->rules([
+                    fn (Get $get, ?ServiceTicketPart $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get, $record) {
+                        $selectedProductId = $get('product_id');
+                        if (! $selectedProductId) {
+                            return;
+                        }
+                        $product = Product::query()->find($selectedProductId);
+                        if (! $product) {
+                            return;
+                        }
+                        $alreadyHeld = ($record && (int) $record->product_id === (int) $selectedProductId)
+                            ? (int) $record->stock_deducted_qty
+                            : 0;
+                        $maxAvailable = (int) $product->stock + $alreadyHeld;
+                        if ((int) $value > $maxAvailable) {
+                            $fail("Stok {$product->name} hanya tersedia {$maxAvailable} unit.");
+                        }
+                    },
+                ])
                 ->required(),
             Forms\Components\TextInput::make('unit_price')
                 ->label('Harga Satuan (Rp)')

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -428,5 +429,102 @@ class PcCompatibilityService
             'creator_score' => $creatorScore,
             'notes' => $notes,
         ];
+    }
+
+    /**
+     * Match a reference catalog part against available physical store inventory in the same component slot.
+     *
+     * @param Collection<int, Product> $storeProductsForSlot
+     */
+    public function matchStoreInventoryForSlot(Collection $storeProductsForSlot, Model $catalogPart): ?Product
+    {
+        if ($storeProductsForSlot->isEmpty()) {
+            return null;
+        }
+
+        $catTokens = $this->extractSignificantModelTokens((string) $catalogPart->name);
+        if (count($catTokens) === 0) {
+            return null;
+        }
+
+        $catCodeTokens = array_values(array_filter($catTokens, fn (string $t) => (bool) preg_match('/\d/', $t)));
+        if (count($catCodeTokens) === 0) {
+            return null;
+        }
+
+        $variantFlags = ['TI', 'XT', 'XTX', 'SUPER', 'GRE'];
+
+        foreach ($storeProductsForSlot as $storeItem) {
+            if ($storeItem->brand && $catalogPart->brand) {
+                $sb = strtoupper(trim($storeItem->brand));
+                $cb = strtoupper(trim((string) $catalogPart->brand));
+                if ($sb !== '' && $cb !== '' && ! str_contains($cb, $sb) && ! str_contains($sb, $cb)) {
+                    continue;
+                }
+            }
+
+            $storeTokens = $this->extractSignificantModelTokens((string) $storeItem->name);
+            if (count($storeTokens) === 0) {
+                continue;
+            }
+
+            $parityOk = true;
+            foreach ($variantFlags as $flag) {
+                if (in_array($flag, $storeTokens, true) !== in_array($flag, $catTokens, true)) {
+                    $parityOk = false;
+                    break;
+                }
+            }
+            if (! $parityOk) {
+                continue;
+            }
+
+            $sharedCodes = array_intersect($catCodeTokens, $storeTokens);
+            if (count($sharedCodes) === 0) {
+                continue;
+            }
+
+            $sharedAll = array_intersect($catTokens, $storeTokens);
+            $minLen = min(count($catTokens), count($storeTokens));
+            if ($minLen > 0 && (count($sharedAll) / $minLen) >= 0.75) {
+                return $storeItem;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractSignificantModelTokens(string $rawName): array
+    {
+        $normalized = strtoupper($rawName);
+        $normalized = preg_replace('/\([^)]*\)/', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/(\d+)\s*(GB|TB|W)\b/', '$1$2', $normalized) ?? $normalized;
+
+        $rawTokens = preg_split('/[^A-Z0-9]+/', $normalized) ?: [];
+        $ignore = [
+            'BOX', 'TRAY', 'FAN', 'FULLSET', 'GARANSI', 'RESMI', 'SECOND', 'BEKAS', 'BARU',
+            'PLUS', 'BRONZE', 'GOLD', 'PLATINUM', 'CERTIFIED', 'MODULAR', 'SEMI', 'FULLY',
+            'PCIE', 'PCI', 'NVME', 'M2', 'SSD', 'HDD', 'INTERNAL', 'SOLID', 'STATE', 'DRIVE',
+            'DDR3', 'DDR4', 'DDR5', 'ATX', 'MATX', 'MICRO', 'MINI', 'ITX', 'SOCKET',
+            'CORE', 'THREAD', 'GHZ', 'MHZ', 'BLACK', 'WHITE', 'RGB', 'ARGB', 'EDITION',
+            'MEMORY', 'VIDEO', 'CARD', 'GRAPHICS', 'PROCESSOR', 'POWER', 'SUPPLY', '80',
+            '4', '0', '3', '2', '1', '6', '12', '16',
+        ];
+
+        $result = [];
+        foreach ($rawTokens as $tok) {
+            if ($tok === '' || in_array($tok, $ignore, true)) {
+                continue;
+            }
+            if (preg_match('/^\d+(CORE|THREAD|MHZ|MM|W)$/', $tok)) {
+                continue;
+            }
+            $result[] = $tok;
+        }
+
+        return array_values(array_unique($result));
     }
 }
