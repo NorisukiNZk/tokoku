@@ -41,8 +41,8 @@ php artisan serve
 
 | Akses / Fitur | URL | Kredensial / Kode Uji |
 | :--- | :--- | :--- |
-| **Panel Admin** | `/admin` | `admin@tokoku.local` / `admin123` |
-| **Panel Teknisi** | `/teknisi` | `teknisi@tokoku.local` / `teknisi123` |
+| **Panel Admin** | `/admin` | `admin@tokoku.local` / `admin123` (PIN Reset: `112233`) |
+| **Panel Teknisi** | `/teknisi` | `teknisi@tokoku.local` / `teknisi123` (PIN Reset: `445566`) |
 | **Cek Resi Servis** | `/servis` | Tiket `SRV-202611-0001` · PIN WA `1234` |
 | **Contoh Rakitan PC** | `/rakit-pc?kode=RKT-CONTOH` | Kode `RKT-CONTOH` |
 

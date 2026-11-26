@@ -2,19 +2,21 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Models\StoreSetting;
+use App\Models\User;
 use App\Services\RecaptchaVerifier;
-use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
-use Exception;
 use Filament\Facades\Filament;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Notifications\Auth\ResetPassword as ResetPasswordNotification;
+use Filament\Http\Responses\Auth\Contracts\PasswordResetResponse;
 use Filament\Notifications\Notification;
 use Filament\Pages\Auth\PasswordReset\RequestPasswordReset as BaseRequestPasswordReset;
-use Illuminate\Auth\Events\PasswordResetLinkSent;
-use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 
 class TokokuRequestPasswordReset extends BaseRequestPasswordReset
 {
@@ -22,10 +24,19 @@ class TokokuRequestPasswordReset extends BaseRequestPasswordReset
     protected static string $view = 'filament.pages.auth.request-password-reset';
 
     public string $email = '';
+    public string $recoveryPin = '';
     public string $recaptchaToken = '';
     public string $securityAnswer = '';
     public string $challengePrompt = '';
-    public bool $resetRequested = false;
+
+    #[Locked]
+    public ?int $verifiedUserId = null;
+
+    #[Locked]
+    public string $verifiedEmail = '';
+
+    public string $newPassword = '';
+    public string $newPasswordConfirmation = '';
 
     public function mount(): void
     {
@@ -45,7 +56,9 @@ class TokokuRequestPasswordReset extends BaseRequestPasswordReset
 
     public function getHeading(): string | Htmlable
     {
-        return 'Pulihkan Kata Sandi Akun';
+        return $this->verifiedUserId
+            ? 'Buat Kata Sandi Baru'
+            : 'Atur Ulang Kata Sandi Instan';
     }
 
     public function refreshSecurityChallenge(): void
@@ -61,21 +74,52 @@ class TokokuRequestPasswordReset extends BaseRequestPasswordReset
         }
     }
 
-    public function request(): void
+    public function fillLocalDemoRecovery(): void
     {
-        try {
-            $this->rateLimit(3);
-        } catch (TooManyRequestsException $exception) {
-            $this->getRateLimitedNotification($exception)?->send();
-
+        if (! app()->environment(['local', 'testing'])) {
             return;
+        }
+
+        $panelId = Filament::getCurrentPanel()?->getId();
+        if ($panelId === 'admin') {
+            $this->email = 'admin@tokoku.local';
+            $this->recoveryPin = '112233';
+        } else {
+            $this->email = 'teknisi@tokoku.local';
+            $this->recoveryPin = '445566';
+        }
+
+        $verifier = app(RecaptchaVerifier::class);
+        if (! $verifier->isGoogleConfigured()) {
+            $expected = $verifier->currentFallbackAnswerForLocalDemo($this->captchaContextKey());
+            if ($expected === null) {
+                $this->refreshSecurityChallenge();
+                $expected = $verifier->currentFallbackAnswerForLocalDemo($this->captchaContextKey());
+            }
+            $this->securityAnswer = (string) ($expected ?? '');
+        }
+    }
+
+    public function verifyPinAndProceed(): void
+    {
+        $cleanEmail = strtolower(trim($this->email));
+        $rateKey = 'tokoku:pin-reset:' . request()->ip() . ':' . $cleanEmail;
+
+        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateKey);
+            throw ValidationException::withMessages([
+                'recoveryPin' => "Terlalu banyak percobaan PIN pemulihan. Tunggu {$seconds} detik sebelum mencoba kembali.",
+            ]);
         }
 
         $this->validate([
             'email' => ['required', 'email'],
+            'recoveryPin' => ['required', 'string', 'min:6', 'max:40'],
         ], [
-            'email.required' => 'Masukkan alamat email akun staf Anda.',
+            'email.required' => 'Alamat email staf wajib diisi.',
             'email.email' => 'Format alamat email tidak valid.',
+            'recoveryPin.required' => 'Masukkan 6 digit PIN Pemulihan atau Kode Pemulihan Toko.',
+            'recoveryPin.min' => 'PIN Pemulihan minimal 6 karakter.',
         ]);
 
         $verifier = app(RecaptchaVerifier::class);
@@ -98,53 +142,113 @@ class TokokuRequestPasswordReset extends BaseRequestPasswordReset
             }
         }
 
-        Password::broker(Filament::getAuthPasswordBroker())->sendResetLink(
-            ['email' => trim($this->email)],
-            function (CanResetPassword $user, string $token): void {
-                if (
-                    ($user instanceof FilamentUser) &&
-                    (! $user->canAccessPanel(Filament::getCurrentPanel()))
-                ) {
-                    return;
-                }
+        $panel = Filament::getCurrentPanel();
+        $user = User::query()->where('email', $cleanEmail)->first();
 
-                if (! method_exists($user, 'notify')) {
-                    $userClass = $user::class;
+        $submittedSecret = trim($this->recoveryPin);
+        $masterCode = trim((string) config('services.tokoku.recovery_code', ''));
 
-                    throw new Exception("Model [{$userClass}] does not have a [notify()] method.");
-                }
+        $pinValid = false;
+        if ($user && (! $panel || $user->canAccessPanel($panel))) {
+            $rawHashedPin = $user->getRawOriginal('recovery_pin');
+            if (filled($rawHashedPin) && Hash::check($submittedSecret, $rawHashedPin)) {
+                $pinValid = true;
+            } elseif (strlen($masterCode) >= 6 && hash_equals($masterCode, $submittedSecret)) {
+                $pinValid = true;
+            }
+        }
 
-                $notification = app(ResetPasswordNotification::class, ['token' => $token]);
-                $notification->url = Filament::getResetPasswordUrl($token, $user);
+        if (! $user || ! $pinValid) {
+            RateLimiter::hit($rateKey, 300);
+            if ($verifier->isGoogleConfigured()) {
+                $this->recaptchaToken = '';
+                $this->dispatch('tokoku-recaptcha-reset');
+            } else {
+                $this->refreshSecurityChallenge();
+            }
 
-                $user->notify($notification);
+            throw ValidationException::withMessages([
+                'recoveryPin' => 'Email atau PIN Pemulihan tidak sesuai untuk panel ini.',
+            ]);
+        }
 
-                if (class_exists(PasswordResetLinkSent::class)) {
-                    event(new PasswordResetLinkSent($user));
-                }
-            },
-        );
+        RateLimiter::clear($rateKey);
+        $verifier->clearFallbackChallenge($this->captchaContextKey());
 
-        $this->resetRequested = true;
-        $this->email = '';
-        $this->refreshSecurityChallenge();
+        $this->verifiedUserId = $user->id;
+        $this->verifiedEmail = $user->email;
+        $this->recoveryPin = '';
+    }
+
+    public function saveNewPassword(): ?PasswordResetResponse
+    {
+        if (! $this->verifiedUserId) {
+            return null;
+        }
+
+        $this->validate([
+            'newPassword' => ['required', 'string', PasswordRule::min(8), 'same:newPasswordConfirmation'],
+            'newPasswordConfirmation' => ['required', 'string'],
+        ], [
+            'newPassword.required' => 'Kata sandi baru wajib diisi.',
+            'newPassword.min' => 'Kata sandi baru minimal 8 karakter.',
+            'newPassword.same' => 'Ulangan kata sandi baru belum sama.',
+            'newPasswordConfirmation.required' => 'Ketik ulang kata sandi baru Anda.',
+        ]);
+
+        $panel = Filament::getCurrentPanel();
+        $user = User::query()->find($this->verifiedUserId);
+
+        if (! $user || ($panel && ! $user->canAccessPanel($panel))) {
+            $this->cancelVerification();
+
+            throw ValidationException::withMessages([
+                'email' => 'Sesi pemulihan tidak valid. Silakan ulangi verifikasi PIN.',
+            ]);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($this->newPassword),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        event(new PasswordReset($user));
+
+        $this->verifiedUserId = null;
+        $this->newPassword = '';
+        $this->newPasswordConfirmation = '';
 
         Notification::make()
-            ->title('Permintaan pemulihan kata sandi diproses.')
-            ->body('Jika email terdaftar pada panel ini, tautan atur ulang kata sandi telah dikirimkan.')
+            ->title('Kata sandi berhasil diperbarui!')
+            ->body('Silakan masuk menggunakan kata sandi baru Anda.')
             ->success()
             ->send();
+
+        return app(PasswordResetResponse::class);
+    }
+
+    public function cancelVerification(): void
+    {
+        $this->verifiedUserId = null;
+        $this->verifiedEmail = '';
+        $this->newPassword = '';
+        $this->newPasswordConfirmation = '';
+        $this->refreshSecurityChallenge();
     }
 
     protected function getViewData(): array
     {
         $verifier = app(RecaptchaVerifier::class);
+        $panelId = Filament::getCurrentPanel()?->getId() ?? 'admin';
+        $store = StoreSetting::current();
 
         return [
+            'panelId' => $panelId,
             'loginUrl' => Filament::getLoginUrl(),
             'isGoogleRecaptcha' => $verifier->isGoogleConfigured(),
             'recaptchaSiteKey' => $verifier->siteKey(),
-            'isLogMailer' => config('mail.default') === 'log',
+            'isLocalDemoAllowed' => app()->environment(['local', 'testing']),
+            'adminHelpWaUrl' => $store->whatsappUrl('Halo Admin ' . $store->store_name . ', saya staf teknisi dan membutuhkan bantuan pengaturan ulang PIN / kata sandi akun meja teknisi.'),
         ];
     }
 

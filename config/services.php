@@ -40,4 +40,8 @@ return [
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),
     ],
 
+    'tokoku' => [
+        'recovery_code' => env('STAFF_RECOVERY_CODE'),
+    ],
+
 ];

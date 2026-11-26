@@ -21,10 +21,12 @@ class User extends Authenticatable implements FilamentUser
         'phone',
         'role',
         'password',
+        'recovery_pin',
     ];
 
     protected $hidden = [
         'password',
+        'recovery_pin',
         'remember_token',
     ];
 
@@ -33,6 +35,7 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'recovery_pin' => 'hashed',
         ];
     }
 

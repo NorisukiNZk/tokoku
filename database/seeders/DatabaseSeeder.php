@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
                 'phone' => '081200000001',
                 'role' => 'admin',
                 'password' => Hash::make('admin123'),
+                'recovery_pin' => Hash::make('112233'),
             ]
         );
 
@@ -38,6 +39,7 @@ class DatabaseSeeder extends Seeder
                 'phone' => '081200000002',
                 'role' => 'technician',
                 'password' => Hash::make('teknisi123'),
+                'recovery_pin' => Hash::make('445566'),
             ]
         );
 

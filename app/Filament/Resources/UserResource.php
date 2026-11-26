@@ -43,8 +43,20 @@ class UserResource extends Resource
                 ->required()
                 ->default('technician'),
             Forms\Components\TextInput::make('password')
-                ->label('Kata Sandi')
+                ->label('Kata Sandi Login')
                 ->password()
+                ->revealable()
+                ->dehydrateStateUsing(fn (?string $state) => filled($state) ? Hash::make($state) : null)
+                ->dehydrated(fn (?string $state) => filled($state))
+                ->required(fn (string $operation): bool => $operation === 'create'),
+            Forms\Components\TextInput::make('recovery_pin')
+                ->label('PIN Pemulihan Sandi (6 Angka)')
+                ->password()
+                ->revealable()
+                ->minLength(6)
+                ->maxLength(6)
+                ->rule('digits:6')
+                ->helperText('Dipakai staf untuk mengatur ulang kata sandi secara instan tanpa email. Kosongkan saat edit bila tidak ingin mengubah PIN.')
                 ->dehydrateStateUsing(fn (?string $state) => filled($state) ? Hash::make($state) : null)
                 ->dehydrated(fn (?string $state) => filled($state))
                 ->required(fn (string $operation): bool => $operation === 'create'),
@@ -68,6 +80,11 @@ class UserResource extends Resource
                     ->color(fn (string $state) => $state === 'admin' ? 'primary' : 'info'),
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Telepon'),
+                Tables\Columns\TextColumn::make('recovery_pin')
+                    ->label('PIN Pemulihan')
+                    ->badge()
+                    ->state(fn (User $record): string => filled($record->getRawOriginal('recovery_pin')) ? 'Aktif' : 'Belum Diatur')
+                    ->color(fn (string $state): string => $state === 'Aktif' ? 'success' : 'warning'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

@@ -269,42 +269,61 @@ class TokokuProductionHardeningTest extends TestCase
 
     public function test_forgot_password_and_reset_password_flow_work_for_staff(): void
     {
-        Notification::fake();
-
         $this->get('/admin/password-reset/request')
             ->assertOk()
-            ->assertSee('Pulihkan Kata Sandi Akun');
+            ->assertSee('Atur Ulang Kata Sandi Instan')
+            ->assertSee('PIN Pemulihan 6 Digit');
 
         $this->get('/teknisi/password-reset/request')
             ->assertOk()
-            ->assertSee('Pulihkan Kata Sandi Akun');
+            ->assertSee('Atur Ulang Kata Sandi Instan')
+            ->assertSee('Minta bantuan Admin via WA');
 
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         $admin = User::query()->where('email', 'admin@tokoku.local')->firstOrFail();
 
-        $resetComp = Livewire::test(TokokuRequestPasswordReset::class);
-        $expectedAnswer = session('tokoku.security_challenge.reset_admin');
+        $wrongAttempt = Livewire::test(TokokuRequestPasswordReset::class);
+        $challengeAns = session('tokoku.security_challenge.reset_admin');
 
-        $resetComp
+        $wrongAttempt
             ->set('email', 'admin@tokoku.local')
-            ->set('securityAnswer', (string) $expectedAnswer)
-            ->call('request')
+            ->set('recoveryPin', '000000')
+            ->set('securityAnswer', (string) $challengeAns)
+            ->call('verifyPinAndProceed')
+            ->assertHasErrors(['recoveryPin'])
+            ->assertSet('verifiedUserId', null);
+
+        Livewire::test(TokokuRequestPasswordReset::class)
+            ->call('fillLocalDemoRecovery')
+            ->call('verifyPinAndProceed')
             ->assertHasNoErrors()
-            ->assertSet('resetRequested', true);
-
-        Notification::assertSentTo($admin, ResetPasswordNotification::class);
-
-        $token = Password::broker(Filament::getAuthPasswordBroker())->createToken($admin);
-
-        Livewire::test(TokokuResetPassword::class, [
-            'email' => $admin->email,
-            'token' => $token,
-        ])
-            ->set('password', 'sandibaru2026')
-            ->set('passwordConfirmation', 'sandibaru2026')
-            ->call('resetPassword')
+            ->assertSet('verifiedUserId', $admin->id)
+            ->set('newPassword', 'sandibaru2026')
+            ->set('newPasswordConfirmation', 'sandibaru2026')
+            ->call('saveNewPassword')
             ->assertHasNoErrors();
 
         $this->assertTrue(Hash::check('sandibaru2026', $admin->fresh()->password));
+
+        config(['services.tokoku.recovery_code' => 'DARURAT-TOKO-99']);
+        Filament::setCurrentPanel(Filament::getPanel('teknisi'));
+        $tech = User::query()->where('email', 'teknisi@tokoku.local')->firstOrFail();
+
+        $masterComp = Livewire::test(TokokuRequestPasswordReset::class);
+        $techChallenge = session('tokoku.security_challenge.reset_teknisi');
+
+        $masterComp
+            ->set('email', 'teknisi@tokoku.local')
+            ->set('recoveryPin', 'DARURAT-TOKO-99')
+            ->set('securityAnswer', (string) $techChallenge)
+            ->call('verifyPinAndProceed')
+            ->assertHasNoErrors()
+            ->assertSet('verifiedUserId', $tech->id)
+            ->set('newPassword', 'teknisibaru2026')
+            ->set('newPasswordConfirmation', 'teknisibaru2026')
+            ->call('saveNewPassword')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Hash::check('teknisibaru2026', $tech->fresh()->password));
     }
 }
