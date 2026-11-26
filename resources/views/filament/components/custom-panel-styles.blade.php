@@ -49,14 +49,86 @@
         --tk-err-bd: #EF4444;
     }
 
-    /* Refined Filament shell matching Tokoku Slate + Marketplace Blue design */
+    /* Refined Filament shell: Dark Charcoal Sidebar + Crisp Workspace */
     .fi-body {
         background-color: var(--tk-canvas) !important;
     }
 
+    .fi-header:has(.fi-header-heading:empty) {
+        display: none !important;
+    }
+
     .fi-sidebar {
-        background-color: var(--tk-surface) !important;
-        border-inline-end: 1px solid var(--tk-border) !important;
+        background-color: #0F172A !important;
+        border-inline-end: 1px solid #1E293B !important;
+    }
+
+    .fi-sidebar-header {
+        background-color: #0F172A !important;
+        border-bottom: 1px solid #1E293B !important;
+        box-shadow: none !important;
+    }
+
+    .fi-sidebar .tk-brand-mark {
+        background-color: #0B1220 !important;
+        border: 1.5px solid #FB923C !important;
+        color: #F8FAFC !important;
+    }
+
+    .fi-sidebar .tk-brand-name {
+        color: #F8FAFC !important;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+        font-weight: 800 !important;
+    }
+
+    .fi-sidebar .tk-brand-role {
+        color: #CBD5E1 !important;
+    }
+
+    .fi-sidebar-header .fi-icon-btn {
+        color: #CBD5E1 !important;
+    }
+
+    .fi-sidebar-group-label {
+        color: #94A3B8 !important;
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.05em !important;
+        text-transform: uppercase !important;
+    }
+
+    .fi-sidebar-group-collapse-button {
+        color: #94A3B8 !important;
+    }
+
+    .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-button .fi-sidebar-item-label,
+    .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-button .fi-sidebar-item-icon {
+        color: #CBD5E1 !important;
+        transition: color 140ms ease !important;
+    }
+
+    .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-button:hover {
+        background-color: #1E293B !important;
+    }
+
+    .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-button:hover .fi-sidebar-item-label,
+    .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-button:hover .fi-sidebar-item-icon {
+        color: #F8FAFC !important;
+    }
+
+    .fi-sidebar-item-active > .fi-sidebar-item-button,
+    .fi-sidebar-item.fi-active > .fi-sidebar-item-button {
+        background-color: #2C190E !important;
+        border-inline-start: 3px solid #FB923C !important;
+        border-radius: 0.65rem !important;
+    }
+
+    .fi-sidebar-item-active > .fi-sidebar-item-button .fi-sidebar-item-label,
+    .fi-sidebar-item-active > .fi-sidebar-item-button .fi-sidebar-item-icon,
+    .fi-sidebar-item.fi-active > .fi-sidebar-item-button .fi-sidebar-item-label,
+    .fi-sidebar-item.fi-active > .fi-sidebar-item-button .fi-sidebar-item-icon {
+        color: #FDBA74 !important;
+        font-weight: 700 !important;
     }
 
     .fi-topbar > nav {
@@ -65,23 +137,31 @@
         box-shadow: none !important;
     }
 
-    .fi-sidebar-item-active > .fi-sidebar-item-button {
+    .fi-topbar-item-active > a,
+    .fi-topbar-item.fi-active > a {
         background-color: var(--tk-accent-soft) !important;
-        border-radius: 0.65rem !important;
+        border: 1px solid var(--tk-accent) !important;
+        border-radius: 0.6rem !important;
     }
 
-    .fi-sidebar-item-active > .fi-sidebar-item-button .fi-sidebar-item-label,
-    .fi-sidebar-item-active > .fi-sidebar-item-button .fi-sidebar-item-icon {
+    .fi-topbar-item-active > a span,
+    .fi-topbar-item-active > a svg,
+    .fi-topbar-item.fi-active > a span,
+    .fi-topbar-item.fi-active > a svg {
         color: var(--tk-accent-soft-fg) !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
     }
 
     .fi-ta-ctn,
     .fi-section,
     .fi-wi-stats-overview-stat {
-        border-radius: 0.85rem !important;
+        border-radius: 0.9rem !important;
         border: 1px solid var(--tk-border) !important;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    }
+
+    .fi-ta-row {
+        transition: background-color 120ms ease !important;
     }
 
     /* Brand lockup */
@@ -996,5 +1076,315 @@
     .tk-auth-link:focus-visible {
         outline: 3px solid var(--tk-accent);
         outline-offset: 2px;
+    }
+
+    /* Zero-cost GPU micro-animations & clean command workspace */
+    @keyframes tk-enter {
+        from {
+            opacity: 0;
+            transform: translate3d(0, 8px, 0);
+        }
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+    @keyframes tk-drawer-in {
+        from {
+            opacity: 0.4;
+            transform: translate3d(100%, 0, 0);
+        }
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+    @keyframes tk-backdrop-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes tk-pulse-ring {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.45; transform: scale(1.22); }
+    }
+
+    .tk-anim-enter {
+        animation: tk-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .tk-delay-1 { animation-delay: 35ms; }
+    .tk-delay-2 { animation-delay: 70ms; }
+    .tk-delay-3 { animation-delay: 105ms; }
+    .tk-delay-4 { animation-delay: 140ms; }
+
+    .tk-modal-backdrop {
+        animation: tk-backdrop-in 160ms ease-out both;
+    }
+
+    .tk-drawer {
+        animation: tk-drawer-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .tk-live-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 999px;
+        background-color: #EF4444;
+        display: inline-block;
+        animation: tk-pulse-ring 1.8s ease-in-out infinite;
+    }
+
+    .tk-cmd-banner {
+        background-color: #0F172A;
+        color: #F8FAFC;
+        border: 1px solid #334155;
+        border-radius: 1rem;
+        padding: 1.35rem 1.5rem;
+        box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.28);
+    }
+
+    html.dark .tk-cmd-banner {
+        background-color: #1A2438;
+        border-color: #334155;
+    }
+
+    .tk-cmd-title {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #F8FAFC;
+        letter-spacing: -0.02em;
+        margin: 0;
+        line-height: 1.22;
+    }
+
+    .tk-cmd-sub {
+        font-size: 0.85rem;
+        color: #CBD5E1;
+        margin: 0.28rem 0 0 0;
+        line-height: 1.45;
+    }
+
+    .tk-cmd-btn-accent {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 2.75rem;
+        padding: 0 1rem;
+        border-radius: 0.65rem;
+        font-size: 0.83rem;
+        font-weight: 700;
+        background-color: #FB923C;
+        color: #0F172A;
+        border: 1px solid transparent;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color 140ms ease, transform 110ms ease;
+    }
+
+    .tk-cmd-btn-accent:hover {
+        background-color: #FDBA74;
+        transform: translateY(-1px);
+    }
+
+    .tk-cmd-btn-outline {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 2.75rem;
+        padding: 0 0.95rem;
+        border-radius: 0.65rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        background-color: rgba(255, 255, 255, 0.04);
+        color: #F8FAFC;
+        border: 1px solid #8FA0B8;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color 140ms ease, border-color 140ms ease;
+    }
+
+    .tk-cmd-btn-outline:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: #FB923C;
+    }
+
+    .tk-cmd-search {
+        width: 100%;
+        min-height: 2.75rem;
+        padding: 0.5rem 0.85rem 0.5rem 2.4rem;
+        border-radius: 0.65rem;
+        background-color: #0B1220;
+        color: #F8FAFC;
+        border: 1px solid #8FA0B8;
+        font-size: 0.85rem;
+        transition: border-color 140ms ease;
+    }
+
+    .tk-cmd-search::placeholder {
+        color: #CBD5E1;
+        opacity: 0.85;
+    }
+
+    .tk-cmd-search:focus {
+        border-color: #FB923C;
+        outline: 2px solid #FB923C;
+        outline-offset: 1px;
+    }
+
+    .tk-kpi-card {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 0.55rem;
+        background-color: var(--tk-surface);
+        border: 1px solid var(--tk-border);
+        border-radius: 0.95rem;
+        padding: 1.1rem 1.2rem;
+        text-decoration: none;
+        transition: transform 170ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 170ms ease, border-color 170ms ease;
+    }
+
+    .tk-kpi-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--tk-accent);
+        box-shadow: 0 12px 24px -10px rgba(15, 23, 42, 0.14);
+    }
+
+    .tk-kpi-bar {
+        position: absolute;
+        inset-inline: 0;
+        top: 0;
+        height: 3px;
+    }
+
+    .tk-kpi-value {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--tk-ink);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+    }
+
+    .tk-seg-tabs {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        padding: 0.32rem;
+        border-radius: 0.8rem;
+        background-color: var(--tk-subtle);
+        border: 1px solid var(--tk-border);
+    }
+
+    .tk-seg-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 2.55rem;
+        padding: 0 0.95rem;
+        border-radius: 0.6rem;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--tk-muted);
+        font-size: 0.83rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .tk-seg-btn:hover {
+        color: var(--tk-ink);
+    }
+
+    .tk-seg-btn-active {
+        background-color: var(--tk-surface);
+        color: var(--tk-ink);
+        border-color: var(--tk-border-strong);
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+    }
+
+    .tk-clean-table {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--tk-border);
+        border-radius: 0.8rem;
+        overflow: hidden;
+        background-color: var(--tk-surface);
+    }
+
+    .tk-clean-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.85rem;
+        padding: 0.95rem 1.15rem;
+        border-bottom: 1px solid var(--tk-border);
+        transition: background-color 130ms ease;
+    }
+
+    .tk-clean-row:last-child {
+        border-bottom: 0;
+    }
+
+    .tk-clean-row:hover {
+        background-color: var(--tk-subtle);
+    }
+
+    .tk-lane-card {
+        background-color: var(--tk-surface);
+        border: 1px solid var(--tk-border);
+        border-radius: 0.8rem;
+        padding: 0.95rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .tk-lane-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--tk-accent);
+        box-shadow: 0 10px 20px -8px rgba(15, 23, 42, 0.14);
+    }
+
+    .tk-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .tk-btn:active,
+    .tk-cmd-btn-accent:active,
+    .tk-cmd-btn-outline:active,
+    .tk-step-btn:active {
+        transform: scale(0.97);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .tk-anim-enter,
+        .tk-modal-backdrop,
+        .tk-drawer,
+        .tk-live-dot {
+            animation: none !important;
+        }
+        .tk-kpi-card,
+        .tk-lane-card,
+        .tk-btn,
+        .tk-cmd-btn-accent {
+            transition: none !important;
+            transform: none !important;
+        }
     }
 </style>

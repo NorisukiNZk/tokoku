@@ -40,7 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn () => view('filament.components.brand-logo', ['role' => 'Admin Toko']))
             ->brandLogoHeight('2.4rem')
             ->sidebarCollapsibleOnDesktop()
-            ->maxContentWidth(MaxWidth::Full)
+            ->maxContentWidth(MaxWidth::SevenExtraLarge)
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->colors([
                 'primary' => Color::Orange,

@@ -8,6 +8,7 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Panel;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,11 @@ class WorkshopBoard extends Page
     protected static ?string $title = 'Papan Antrean Bengkel';
     protected static ?int $navigationSort = -1;
     protected static string $view = 'filament.pages.workshop-board';
+
+    public function getHeading(): string | Htmlable
+    {
+        return '';
+    }
 
     public string $search = '';
     public string $scope = 'all';

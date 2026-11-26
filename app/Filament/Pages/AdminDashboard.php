@@ -10,6 +10,7 @@ use App\Models\ServiceTicketLog;
 use App\Models\StoreSetting;
 use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 
 class AdminDashboard extends BaseDashboard
@@ -18,6 +19,11 @@ class AdminDashboard extends BaseDashboard
     protected static ?string $navigationLabel = 'Beranda Operasional';
     protected static ?string $title = 'Pusat Kendali Toko';
     protected static string $view = 'filament.pages.admin-dashboard';
+
+    public function getHeading(): string | Htmlable
+    {
+        return '';
+    }
 
     public string $ticketFilter = 'active';
     public string $stockFilter = 'low';

@@ -37,7 +37,7 @@ class TeknisiPanelProvider extends PanelProvider
             ->brandName('Meja Teknisi Tokoku')
             ->brandLogo(fn () => view('filament.components.brand-logo', ['role' => 'Bengkel Teknisi']))
             ->brandLogoHeight('2.4rem')
-            ->sidebarCollapsibleOnDesktop()
+            ->topNavigation()
             ->maxContentWidth(MaxWidth::Full)
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->colors([
