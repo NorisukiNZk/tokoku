@@ -23,7 +23,7 @@
     >
         <div class="tk-auth-card">
             <aside aria-label="Informasi Ruang Kerja Staf" class="tk-auth-showcase">
-                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div class="tk-auth-desktop-only" style="display: flex; flex-direction: column; gap: 1.25rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
                         <div style="display: inline-flex; align-items: center; gap: 0.65rem;">
                             <span style="width: 2.25rem; height: 2.25rem; border-radius: 0.6rem; background: #0F172A; border: 1.5px solid #FB923C; color: #F8FAFC; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;">
@@ -123,10 +123,10 @@
                     </ul>
                 </div>
 
-                <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; padding-top: 0.5rem;">
+                <div class="tk-auth-switch-grid">
                     <a href="{{ url('/') }}" class="tk-auth-ink-btn">
                         <span aria-hidden="true">&larr;</span>
-                        <span>Ke Etalase Publik</span>
+                        <span>Ke Etalase</span>
                     </a>
                     @if($isAdmin)
                         <a href="{{ url('/teknisi/login') }}" class="tk-auth-ink-btn">
@@ -144,9 +144,14 @@
 
             <main class="tk-auth-form-pane">
                 <div class="tk-auth-topbar">
-                    <span class="tk-badge tk-badge-blue">
-                        {{ $isAdmin ? 'Akses Khusus Administrator' : 'Akses Staf Teknisi & Admin' }}
-                    </span>
+                    <div style="display: inline-flex; align-items: center; gap: 0.55rem;">
+                        <span class="tk-auth-mobile-only" style="width: 2rem; height: 2rem; border-radius: 0.5rem; background: #0F172A; border: 1.5px solid #FB923C; color: #F8FAFC; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 0.85rem; align-items: center; justify-content: center;">
+                            {{ strtoupper(substr($store->store_name, 0, 1)) }}
+                        </span>
+                        <span class="tk-badge tk-badge-blue">
+                            {{ $isAdmin ? 'Panel Admin Toko' : 'Meja Teknisi' }}
+                        </span>
+                    </div>
 
                     <button
                         type="button"
@@ -154,7 +159,7 @@
                         class="tk-btn tk-btn-sm"
                         :aria-label="isDark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'"
                     >
-                        <span x-text="isDark ? 'Mode Terang' : 'Mode Gelap'">Mode Gelap</span>
+                        <span x-text="isDark ? 'Terang' : 'Gelap'">Gelap</span>
                     </button>
                 </div>
 

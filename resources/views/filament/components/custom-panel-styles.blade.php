@@ -388,16 +388,22 @@
         outline-offset: 2px;
     }
 
-    /* Metric strip */
+    /* Metric strip (2x2 compact grid even on phones, 4-col on desktop!) */
     .tk-metrics-grid {
         display: grid;
-        grid-template-columns: repeat(1, minmax(0, 1fr));
-        gap: 0.85rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+    }
+
+    @media (max-width: 359px) {
+        .tk-metrics-grid {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
     }
 
     @media (min-width: 640px) {
         .tk-metrics-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.85rem;
         }
     }
 
@@ -738,19 +744,58 @@
     .tk-auth-showcase {
         background-color: #0F172A;
         color: #F8FAFC;
-        padding: 1.75rem 1.5rem;
+        padding: 1rem 1.25rem;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        gap: 1.5rem;
-        border-bottom: 1px solid #334155;
+        gap: 1.25rem;
+        order: 2;
+        border-top: 1px solid #334155;
+    }
+
+    .tk-auth-form-pane {
+        order: 1;
+    }
+
+    .tk-auth-desktop-only {
+        display: none !important;
+    }
+
+    .tk-auth-mobile-only {
+        display: inline-flex;
+    }
+
+    .tk-auth-switch-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
     }
 
     @media (min-width: 960px) {
         .tk-auth-showcase {
             padding: 2.35rem;
-            border-bottom: 0;
+            order: 1;
+            border-top: 0;
             border-inline-end: 1px solid #334155;
+        }
+
+        .tk-auth-form-pane {
+            order: 2;
+        }
+
+        .tk-auth-desktop-only {
+            display: flex !important;
+        }
+
+        .tk-auth-mobile-only {
+            display: none !important;
+        }
+
+        .tk-auth-switch-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            padding-top: 0.5rem;
         }
     }
 
@@ -1276,26 +1321,36 @@
     }
 
     .tk-seg-tabs {
-        display: inline-flex;
-        flex-wrap: wrap;
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        max-width: 100%;
         gap: 0.35rem;
         padding: 0.32rem;
         border-radius: 0.8rem;
         background-color: var(--tk-subtle);
         border: 1px solid var(--tk-border);
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tk-seg-tabs::-webkit-scrollbar {
+        display: none;
     }
 
     .tk-seg-btn {
         display: inline-flex;
         align-items: center;
+        flex-shrink: 0;
+        white-space: nowrap;
         gap: 0.45rem;
         min-height: 2.55rem;
-        padding: 0 0.95rem;
+        padding: 0 0.9rem;
         border-radius: 0.6rem;
         border: 1px solid transparent;
         background: transparent;
         color: var(--tk-muted);
-        font-size: 0.83rem;
+        font-size: 0.81rem;
         font-weight: 600;
         cursor: pointer;
         transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
@@ -1363,6 +1418,135 @@
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+    }
+
+    .tk-cmd-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .tk-cmd-span-mobile {
+        grid-column: span 2 / span 2;
+    }
+
+    @media (min-width: 640px) {
+        .tk-cmd-actions-grid {
+            display: flex;
+            flex-wrap: wrap;
+            width: auto;
+        }
+        .tk-cmd-span-mobile {
+            grid-column: auto;
+        }
+    }
+
+    .tk-scroll-pills {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        max-width: 100%;
+        gap: 0.45rem;
+        scrollbar-width: none;
+    }
+
+    .tk-scroll-pills::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tk-mobile-lane-bar {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        max-width: 100%;
+        gap: 0.35rem;
+        padding: 0.35rem;
+        border-radius: 0.85rem;
+        background-color: var(--tk-subtle);
+        border: 1px solid var(--tk-border);
+        scrollbar-width: none;
+    }
+
+    .tk-mobile-lane-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tk-hide-lane-mobile {
+        display: none !important;
+    }
+
+    @media (min-width: 768px) {
+        .tk-mobile-lane-bar {
+            display: none !important;
+        }
+        .tk-hide-lane-mobile {
+            display: flex !important;
+        }
+    }
+
+    .tk-clean-row-price {
+        flex: 0 0 auto;
+        text-align: right;
+    }
+
+    .tk-clean-row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    @media (max-width: 639px) {
+        .fi-main {
+            padding-inline: 0.85rem !important;
+        }
+        .tk-topbar-btn {
+            padding: 0 0.55rem;
+            min-height: 2.25rem;
+        }
+        .tk-cmd-banner {
+            padding: 1rem 1.05rem;
+        }
+        .tk-cmd-title {
+            font-size: 1.18rem;
+        }
+        .tk-cmd-sub {
+            font-size: 0.78rem;
+        }
+        .tk-kpi-card {
+            padding: 0.85rem 0.9rem;
+        }
+        .tk-kpi-value {
+            font-size: 1.25rem;
+        }
+        .tk-panel {
+            padding: 0.95rem;
+        }
+        .tk-clean-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.65rem;
+            padding: 0.85rem 0.9rem;
+        }
+        .tk-clean-row-price {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            text-align: left;
+            padding-top: 0.45rem;
+            border-top: 1px dashed var(--tk-border);
+        }
+        .tk-clean-row-actions {
+            width: 100%;
+        }
+        .tk-clean-row-actions > .tk-btn {
+            flex: 1 1 auto;
+        }
+        .fi-ta-content {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
     }
 
     .tk-btn:active,

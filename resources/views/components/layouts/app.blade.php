@@ -426,6 +426,7 @@
         </div>
     </footer>
 
+    @if(request()->routeIs('home') || request()->routeIs('product.show'))
     <div
         x-show="$store.tokoku.compareItems.length > 0 && !$store.tokoku.compareModalOpen"
         x-cloak
@@ -435,26 +436,27 @@
         x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 translate-y-4"
-        class="compare-float-bar fixed inset-x-0 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 bottom-[calc(3.85rem+env(safe-area-inset-bottom,0px))] md:bottom-5 md:rounded-2xl z-40 px-4 py-3 md:min-w-[30rem] no-print"
+        class="compare-float-bar fixed inset-x-0 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 bottom-[calc(3.85rem+env(safe-area-inset-bottom,0px))] md:bottom-5 md:rounded-2xl z-40 px-3.5 sm:px-4 py-2.5 sm:py-3 md:min-w-[30rem] no-print"
     >
-        <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5 min-w-0">
-                <span class="px-2.5 py-1 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-extrabold text-xs tabular-nums shrink-0" x-text="$store.tokoku.compareItems.length + '/3'"></span>
+        <div class="flex items-center justify-between gap-2.5 sm:gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="px-2 py-1 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-extrabold text-xs tabular-nums shrink-0" x-text="$store.tokoku.compareItems.length + '/3'"></span>
                 <div class="min-w-0">
-                    <p class="font-semibold text-xs sm:text-sm truncate">Bandingkan Barang Pilihan</p>
+                    <p class="font-semibold text-xs sm:text-sm truncate">Bandingkan Barang</p>
                     <p class="text-[11px] ink-muted truncate" x-text="$store.tokoku.compareItems.map(i => i.name).join(' vs ')"></p>
                 </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-                <button type="button" @click="$store.tokoku.compareModalOpen = true" class="btn-ink-accent min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer">
-                    Bandingkan
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <button type="button" @click="$store.tokoku.compareModalOpen = true" class="btn-ink-accent min-h-11 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer">
+                    Lihat
                 </button>
-                <button type="button" @click="$store.tokoku.clearCompare()" class="btn-ink-outline min-h-11 px-3 rounded-lg text-xs cursor-pointer">
-                    Hapus
+                <button type="button" @click="$store.tokoku.clearCompare()" class="btn-ink-outline min-h-11 px-2.5 sm:px-3 rounded-lg text-xs cursor-pointer">
+                    Reset
                 </button>
             </div>
         </div>
     </div>
+    @endif
 
     <div
         x-show="$store.tokoku.compareModalOpen"
@@ -468,10 +470,10 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="judul-bandingkan-barang"
-        class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 no-print"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5 bg-slate-950/75 no-print"
         @click.self="$store.tokoku.compareModalOpen = false"
     >
-        <div class="surface-card rounded-2xl w-full max-w-5xl max-h-[90dvh] flex flex-col overflow-hidden">
+        <div class="surface-card rounded-t-2xl sm:rounded-2xl w-full max-w-5xl max-h-[90dvh] flex flex-col overflow-hidden">
             <div class="p-4 sm:p-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
                 <div>
                     <h2 id="judul-bandingkan-barang" class="font-display font-bold text-lg">Perbandingan Barang Berdampingan</h2>

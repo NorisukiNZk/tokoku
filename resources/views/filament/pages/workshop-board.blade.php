@@ -5,15 +5,21 @@
         'working' => '#FB923C',
         'ready' => '#10B981',
     ];
+    $mobileShortLaneLabels = [
+        'intake' => 'Diagnosa',
+        'approval' => 'Konfirmasi',
+        'working' => 'Kerja & QC',
+        'ready' => 'Siap Ambil',
+    ];
 @endphp
 <x-filament-panels::page>
     <div
-        x-data
+        x-data="{ mobileLane: 'intake' }"
         @keydown.escape.window="$wire.closeQuickWorkbench()"
         class="tk-stack"
     >
         {{-- UNIFIED COMPACT DARK COMMAND BAR (No double header, spacious controls) --}}
-        <header class="tk-cmd-banner tk-anim-enter" style="display: flex; flex-direction: column; gap: 1rem;">
+        <header class="tk-cmd-banner tk-anim-enter" style="display: flex; flex-direction: column; gap: 0.9rem;">
             <div class="tk-hero-bar">
                 <div>
                     <div style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
@@ -28,12 +34,12 @@
                     </p>
                 </div>
 
-                <div class="tk-btn-row">
+                <div class="tk-cmd-actions-grid">
                     <a href="{{ url('/' . $panelPath . '/service-tickets/create') }}" class="tk-cmd-btn-accent">
                         <svg class="tk-ico-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        <span>Terima Unit Baru</span>
+                        <span>Terima Unit</span>
                     </a>
                     <a href="{{ url('/' . $panelPath . '/service-tickets') }}" class="tk-cmd-btn-outline">
                         <span>Tabel &amp; Arsip</span>
@@ -41,8 +47,8 @@
                 </div>
             </div>
 
-            <div style="padding-top: 0.9rem; border-top: 1px solid #334155; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;">
-                <div style="position: relative; flex: 1 1 16rem; max-width: 24rem;">
+            <div style="padding-top: 0.85rem; border-top: 1px solid #334155; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem;">
+                <div style="position: relative; flex: 1 1 16rem; max-width: 26rem;">
                     <label for="tk-board-search" class="sr-only">Cari tiket servis</label>
                     <svg style="position: absolute; inset-inline-start: 0.8rem; top: 0.82rem; width: 1rem; height: 1rem; color: #CBD5E1; pointer-events: none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
@@ -56,18 +62,18 @@
                     >
                 </div>
 
-                <div class="tk-btn-row" role="group" aria-label="Saringan Tugas Bengkel">
+                <div class="tk-scroll-pills" role="group" aria-label="Saringan Tugas Bengkel">
                     @foreach([
                         'all' => 'Semua (' . $totalActive . ')',
                         'mine' => 'Tugas Saya',
                         'unassigned' => 'Belum Diambil',
-                        'pickup' => 'Jemput Lokasi',
+                        'pickup' => 'Jemput',
                     ] as $scopeKey => $scopeLabel)
                         <button
                             type="button"
                             wire:click="setScope('{{ $scopeKey }}')"
                             class="{{ $scope === $scopeKey ? 'tk-cmd-btn-accent' : 'tk-cmd-btn-outline' }}"
-                            style="min-height: 2.4rem; padding: 0 0.8rem; font-size: 0.78rem;"
+                            style="min-height: 2.45rem; padding: 0 0.8rem; font-size: 0.78rem; flex-shrink: 0;"
                         >
                             {{ $scopeLabel }}
                         </button>
@@ -76,11 +82,30 @@
             </div>
         </header>
 
+        {{-- MOBILE LANE SWITCHER TABS (< 768px ONLY: Zero endless vertical scrolling!) --}}
+        <div role="tablist" aria-label="Pilih Lajur Antrean di HP" class="tk-mobile-lane-bar">
+            @foreach($lanes as $mKey => $mLane)
+                <button
+                    type="button"
+                    role="tab"
+                    :aria-selected="(mobileLane === '{{ $mKey }}').toString()"
+                    @click="mobileLane = '{{ $mKey }}'"
+                    class="tk-seg-btn"
+                    :class="mobileLane === '{{ $mKey }}' ? 'tk-seg-btn-active' : ''"
+                    style="flex-shrink: 0;"
+                >
+                    <span style="width: 0.45rem; height: 0.45rem; border-radius: 999px; background-color: {{ $laneAccentColors[$mKey] ?? '#FB923C' }};" aria-hidden="true"></span>
+                    <span>{{ $mobileShortLaneLabels[$mKey] ?? $mLane['title'] }}</span>
+                    <span class="tk-count-pill">{{ $mLane['items']->count() }}</span>
+                </button>
+            @endforeach
+        </div>
+
         <div wire:loading.delay class="tk-panel-subtle" role="status" aria-live="polite" style="font-size: 0.83rem; font-weight: 600;">
             Menyegarkan papan antrean...
         </div>
 
-        {{-- 4 FULL-WIDTH COLOR-CODED KANBAN LANES --}}
+        {{-- 4 FULL-WIDTH COLOR-CODED KANBAN LANES (Single active lane on <768px, 2x2 on tablet, 4-col on desktop) --}}
         <div class="tk-board-grid">
             @foreach($lanes as $laneKey => $lane)
                 @php
@@ -90,6 +115,7 @@
                 <section
                     aria-label="{{ $lane['title'] }}"
                     class="tk-lane tk-anim-enter {{ $delayClass }}"
+                    :class="mobileLane === '{{ $laneKey }}' ? '' : 'tk-hide-lane-mobile'"
                     style="border-top: 3px solid {{ $laneColor }};"
                 >
                     <div class="tk-lane-head">

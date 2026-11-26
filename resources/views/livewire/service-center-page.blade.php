@@ -1,33 +1,33 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-    <div class="surface-ink rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+<div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-5 sm:space-y-6">
+    <div class="surface-ink rounded-2xl p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
         <div class="space-y-1.5">
             <span class="inline-block px-2.5 py-0.5 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-bold text-xs">
                 Workshop &amp; Lacak Resi Transparan
             </span>
-            <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">Layanan Servis &amp; Perawatan PC</h1>
-            <p class="text-sm ink-muted max-w-xl">
+            <h1 class="font-display text-xl sm:text-3xl font-extrabold tracking-tight">Layanan Servis &amp; Perawatan PC</h1>
+            <p class="text-xs sm:text-sm ink-muted max-w-xl">
                 Pilih paket perawatan atau perbaikan di bawah ini, atau lacak perkembangan suhu dan pengerjaan unit yang sedang dititipkan di bengkel kami.
             </p>
         </div>
 
-        <div role="tablist" aria-label="Pilihan Layanan Servis" class="surface-ink-card p-1.5 rounded-xl inline-flex flex-wrap gap-1.5 shrink-0">
+        <div role="tablist" aria-label="Pilihan Layanan Servis" class="surface-ink-card p-1.5 rounded-xl w-full md:w-auto grid grid-cols-2 md:inline-flex gap-1.5 shrink-0">
             <button
                 type="button"
                 role="tab"
                 aria-selected="{{ $activeTab === 'booking' ? 'true' : 'false' }}"
                 wire:click="switchTab('booking')"
-                class="min-h-11 px-4 rounded-lg text-sm cursor-pointer transition-colors {{ $activeTab === 'booking' ? 'btn-ink-accent' : 'ink-muted hover:text-white font-medium' }}"
+                class="min-h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm text-center cursor-pointer transition-colors {{ $activeTab === 'booking' ? 'btn-ink-accent' : 'ink-muted hover:text-white font-medium' }}"
             >
-                Booking &amp; Kisaran Biaya
+                Booking Servis
             </button>
             <button
                 type="button"
                 role="tab"
                 aria-selected="{{ $activeTab === 'tracking' ? 'true' : 'false' }}"
                 wire:click="switchTab('tracking')"
-                class="min-h-11 px-4 rounded-lg text-sm cursor-pointer transition-colors {{ $activeTab === 'tracking' ? 'btn-ink-accent' : 'ink-muted hover:text-white font-medium' }}"
+                class="min-h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm text-center cursor-pointer transition-colors {{ $activeTab === 'tracking' ? 'btn-ink-accent' : 'ink-muted hover:text-white font-medium' }}"
             >
-                Lacak Status Servis
+                Lacak Status Resi
             </button>
         </div>
     </div>
@@ -86,6 +86,7 @@
                             <button
                                 type="button"
                                 wire:click="choosePackage({{ $pkg->id }})"
+                                @click="if (window.innerWidth < 1024) document.getElementById('form-booking-servis')?.scrollIntoView({ behavior: 'smooth' })"
                                 class="{{ $servicePackageId === $pkg->id ? 'btn-accent' : 'btn-secondary' }} min-h-11 px-3.5 rounded-lg text-xs sm:text-sm cursor-pointer"
                             >
                                 {{ $servicePackageId === $pkg->id ? 'Paket Dipilih' : 'Pilih Paket' }}

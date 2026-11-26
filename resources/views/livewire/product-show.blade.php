@@ -83,7 +83,7 @@
 
         <div class="lg:col-span-6 surface-card rounded-xl p-5 sm:p-7 space-y-6">
             <div class="space-y-2.5">
-                <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="px-3 py-1 rounded-md text-xs font-semibold {{ match($product->condition) {
                             'new' => 'badge-ok',
@@ -98,27 +98,27 @@
                         </span>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-1.5">
+                    <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5">
                         <button
                             type="button"
                             @click="$store.tokoku.toggleCompare(@js($comparePayload))"
                             :aria-pressed="$store.tokoku.isCompared({{ $product->id }}).toString()"
-                            class="min-h-11 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                            class="min-h-11 px-2.5 sm:px-3 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer"
                             :class="$store.tokoku.isCompared({{ $product->id }}) ? 'btn-ghost-active' : 'btn-secondary'"
                         >
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                             </svg>
-                            <span x-text="$store.tokoku.isCompared({{ $product->id }}) ? 'Dibandingkan' : 'Bandingkan'">Bandingkan</span>
+                            <span x-text="$store.tokoku.isCompared({{ $product->id }}) ? 'Dipilih' : 'Bandingkan'">Bandingkan</span>
                         </button>
 
                         <button
                             type="button"
                             @click="$store.tokoku.toggleSaved(@js($savedPayload))"
-                            class="min-h-11 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                            class="min-h-11 px-2.5 sm:px-3 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer"
                             :class="$store.tokoku.isSaved({{ $product->id }}) ? 'btn-ghost-active' : 'btn-secondary'"
                         >
-                            <svg class="w-4 h-4" :fill="$store.tokoku.isSaved({{ $product->id }}) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <svg class="w-4 h-4 shrink-0" :fill="$store.tokoku.isSaved({{ $product->id }}) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                             </svg>
                             <span x-text="$store.tokoku.isSaved({{ $product->id }}) ? 'Tersimpan' : 'Simpan'">Simpan</span>
@@ -127,9 +127,9 @@
                         <button
                             type="button"
                             @click="$store.tokoku.shareLink(@js($product->name), @js($product->name . ' - ' . $product->formattedPrice()), window.location.href)"
-                            class="btn-secondary min-h-11 px-3 rounded-lg text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                            class="btn-secondary min-h-11 px-2.5 sm:px-3 rounded-lg text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                             </svg>
                             <span>Bagikan</span>

@@ -21,8 +21,8 @@
                     </p>
                 </div>
 
-                <div class="tk-btn-row">
-                    <a href="{{ url('/admin/products/create') }}" class="tk-cmd-btn-accent">
+                <div class="tk-cmd-actions-grid">
+                    <a href="{{ url('/admin/products/create') }}" class="tk-cmd-btn-accent tk-cmd-span-mobile">
                         <svg class="tk-ico-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
@@ -193,7 +193,7 @@
                                     </div>
                                 </div>
 
-                                <div style="flex: 0 0 auto; text-align: right;">
+                                <div class="tk-clean-row-price">
                                     <div class="tk-mono" style="font-size: 0.92rem; font-weight: 700; color: var(--tk-ink);">
                                         Rp {{ number_format($ticket->grand_total, 0, ',', '.') }}
                                     </div>
@@ -202,7 +202,7 @@
                                     </div>
                                 </div>
 
-                                <div class="tk-btn-row">
+                                <div class="tk-clean-row-actions">
                                     <a href="{{ $ticket->customerWhatsappUrl() }}" target="_blank" rel="noopener noreferrer" class="tk-btn tk-btn-sm">
                                         Chat WA
                                     </a>

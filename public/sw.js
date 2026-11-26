@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tokoku-pwa-v1';
+const CACHE_NAME = 'tokoku-pwa-v3';
 const PRECACHE_URLS = [
     '/offline.html',
     '/manifest.webmanifest',

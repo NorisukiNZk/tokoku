@@ -23,30 +23,30 @@
     $hasPsu = ! empty($selectedProducts['psu']);
 @endphp
 <div
-    x-data
+    x-data="{ mobileStudioOpen: false }"
     @keydown.escape.window="$wire.closeSlotPicker()"
-    class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 pb-24 lg:pb-8 space-y-6"
+    class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 pb-28 lg:pb-8 space-y-4 sm:space-y-6"
 >
-    <section aria-label="Studio Diagram Casing PC Interaktif dan Penilai Performa" class="surface-ink rounded-2xl p-4 sm:p-6 space-y-5 no-print">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--ink-panel-border)] pb-4">
+    <section aria-label="Studio Diagram Casing PC Interaktif dan Penilai Performa" class="surface-ink rounded-2xl p-3.5 sm:p-6 space-y-4 sm:space-y-5 no-print">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 sm:gap-4 border-b border-[var(--ink-panel-border)] pb-3.5 sm:pb-4">
             <div class="space-y-1.5">
                 <div class="flex flex-wrap items-center gap-2">
-                    <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">Simulasi Rakit PC &amp; Diagram Casing</h1>
+                    <h1 class="font-display text-xl sm:text-3xl font-extrabold tracking-tight">Simulasi Rakit PC &amp; Diagram Casing</h1>
                     <span class="px-2.5 py-0.5 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-bold text-xs tabular-nums">
                         {{ number_format($totalCatalogCount, 0, ',', '.') }} Part Tersedia
                     </span>
                 </div>
                 <p class="text-xs sm:text-sm ink-muted max-w-3xl">
-                    Ketuk langsung bagian di dalam diagram casing atau pilih dari daftar slot di bawah. Harga mengacu kurs Rp {{ number_format($store->usd_to_idr_rate ?: 16500, 0, ',', '.') }}/USD dan seluruh kecocokan soket, RAM, ukuran VGA, serta daya PSU dicek otomatis.
+                    Pilih komponen per slot atau pakai paket cepat di bawah. Kurs acuan Rp {{ number_format($store->usd_to_idr_rate ?: 16500, 0, ',', '.') }}/USD dengan cek soket, RAM, ukuran VGA, dan daya PSU otomatis.
                 </p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2 shrink-0 no-print">
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 shrink-0 no-print">
                 <button
                     type="button"
                     wire:click="applySmartTierPreset('budget')"
                     @click="$store.tokoku.notify('Menyusun paket kelas hemat...')"
-                    class="btn-ink-outline min-h-11 px-3.5 rounded-lg text-xs cursor-pointer"
+                    class="btn-ink-outline min-h-11 px-3 rounded-lg text-xs cursor-pointer text-center"
                 >
                     Paket Hemat
                 </button>
@@ -54,7 +54,7 @@
                     type="button"
                     wire:click="applySmartTierPreset('mid')"
                     @click="$store.tokoku.notify('Menyusun paket kelas menengah...')"
-                    class="btn-ink-outline min-h-11 px-3.5 rounded-lg text-xs cursor-pointer"
+                    class="btn-ink-outline min-h-11 px-3 rounded-lg text-xs cursor-pointer text-center"
                 >
                     Paket Menengah
                 </button>
@@ -62,7 +62,7 @@
                     type="button"
                     wire:click="applySmartTierPreset('high')"
                     @click="$store.tokoku.notify('Menyusun paket kelas high-end...')"
-                    class="btn-ink-accent min-h-11 px-3.5 rounded-lg text-xs cursor-pointer"
+                    class="btn-ink-accent min-h-11 px-3 rounded-lg text-xs cursor-pointer text-center"
                 >
                     Paket High-End
                 </button>
@@ -70,14 +70,30 @@
                     type="button"
                     wire:click="clearBuild"
                     @click="$store.tokoku.notify('Semua slot rakitan dikosongkan')"
-                    class="btn-ink-outline min-h-11 px-3 rounded-lg text-xs cursor-pointer"
+                    class="btn-ink-outline min-h-11 px-3 rounded-lg text-xs cursor-pointer text-center"
                 >
                     Reset
                 </button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        {{-- Mobile Expand/Collapse Toggle so 8 Slots appear immediately on phone screens --}}
+        <div class="lg:hidden flex items-center justify-between gap-2 surface-ink-card rounded-xl px-3.5 py-2.5">
+            <div class="min-w-0">
+                <p class="font-display font-bold text-xs text-[#FDBA74] truncate">{{ $performanceProfile['tier_label'] }}</p>
+                <p class="text-[11px] ink-muted tabular-nums">{{ $filledTotalCount }}/8 slot terpasang &middot; {{ $evaluation['estimated_wattage'] }}W</p>
+            </div>
+            <button
+                type="button"
+                @click="mobileStudioOpen = !mobileStudioOpen"
+                :aria-expanded="mobileStudioOpen.toString()"
+                class="btn-ink-outline min-h-10 px-3 rounded-lg text-xs shrink-0 cursor-pointer"
+            >
+                <span x-text="mobileStudioOpen ? 'Tutup Diagram' : 'Buka Diagram'">Buka Diagram</span>
+            </button>
+        </div>
+
+        <div :class="mobileStudioOpen ? 'grid' : 'hidden lg:grid'" class="grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch">
             <div class="lg:col-span-7 surface-ink-card rounded-xl p-4 flex flex-col justify-between gap-4">
                 <div class="flex items-center justify-between gap-2">
                     <div>
@@ -406,12 +422,12 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 shrink-0 sm:pl-2 no-print">
+                    <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 sm:pl-2 no-print">
                         @if($chosen)
                             <button
                                 type="button"
                                 wire:click="openSlotPicker('{{ $slotKey }}')"
-                                class="btn-secondary min-h-11 px-3.5 rounded-lg text-sm cursor-pointer"
+                                class="btn-secondary flex-1 sm:flex-none min-h-11 px-3.5 rounded-lg text-sm cursor-pointer"
                             >
                                 Ganti
                             </button>
@@ -419,7 +435,7 @@
                                 type="button"
                                 wire:click="removeComponent('{{ $slotKey }}')"
                                 @click="$store.tokoku.notify('{{ $meta['label'] }} dilepas')"
-                                class="btn-secondary min-h-11 px-3 rounded-lg text-sm cursor-pointer"
+                                class="btn-secondary min-h-11 px-3.5 rounded-lg text-sm cursor-pointer"
                                 aria-label="Lepas {{ $meta['label'] }}"
                             >
                                 Lepas
@@ -428,7 +444,7 @@
                             <button
                                 type="button"
                                 wire:click="openSlotPicker('{{ $slotKey }}')"
-                                class="btn-accent min-h-11 px-4 rounded-lg text-sm cursor-pointer"
+                                class="btn-accent w-full sm:w-auto min-h-11 px-4 rounded-lg text-sm cursor-pointer"
                             >
                                 Pilih {{ explode(' ', $meta['label'])[0] }}
                             </button>
@@ -688,37 +704,37 @@
             role="dialog"
             aria-modal="true"
             aria-labelledby="judul-dialog-komponen"
-            class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 no-print"
+            class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 no-print"
             @click.self="$wire.closeSlotPicker()"
         >
-            <div class="surface-card rounded-2xl w-full max-w-4xl max-h-[90dvh] flex flex-col overflow-hidden">
-                <div class="p-4 sm:p-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
-                    <div>
-                        <h2 id="judul-dialog-komponen" class="font-display font-bold text-base sm:text-lg">
+            <div class="surface-card rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[92dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden">
+                <div class="p-3.5 sm:p-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <h2 id="judul-dialog-komponen" class="font-display font-bold text-sm sm:text-lg truncate">
                             Pilih {{ $slots[$activePickerSlot]['label'] ?? 'Komponen' }}
                         </h2>
-                        <p class="text-xs text-muted-ink tabular-nums">
-                            Ditemukan {{ number_format($pickerTotalMatching, 0, ',', '.') }} pilihan komponen yang sesuai filter.
+                        <p class="text-[11px] sm:text-xs text-muted-ink tabular-nums">
+                            {{ number_format($pickerTotalMatching, 0, ',', '.') }} komponen sesuai filter.
                         </p>
                     </div>
                     <button
                         type="button"
                         wire:click="closeSlotPicker"
-                        class="btn-secondary min-h-11 px-4 rounded-lg text-sm cursor-pointer"
+                        class="btn-secondary min-h-11 px-3.5 rounded-lg text-xs sm:text-sm shrink-0 cursor-pointer"
                     >
                         Tutup
                     </button>
                 </div>
 
-                <div class="p-4 border-b border-[var(--border-default)] space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                <div class="p-3.5 sm:p-4 border-b border-[var(--border-default)] space-y-2.5 sm:space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
                         <div class="sm:col-span-7">
                             <label for="cari-part-dialog" class="sr-only">Cari merek atau seri part</label>
                             <input
                                 id="cari-part-dialog"
                                 type="search"
                                 wire:model.live.debounce.250ms="pickerSearch"
-                                placeholder="Ketik seri part (misal: Ryzen 5 5600, i5-12400, RTX 4060, 750W)..."
+                                placeholder="Ketik seri (Ryzen 5 5600, RTX 4060, 750W)..."
                                 class="input-field w-full min-h-11 px-3.5 rounded-lg text-sm"
                             >
                         </div>
@@ -736,25 +752,25 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div class="flex flex-wrap items-center gap-1.5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
                             @foreach([
-                                'all' => 'Semua Kelas',
-                                'budget' => 'Kelas Hemat',
+                                'all' => 'Semua',
+                                'budget' => 'Hemat',
                                 'mid' => 'Menengah',
                                 'high' => 'High-End',
                             ] as $tierKey => $tierText)
                                 <button
                                     type="button"
                                     wire:click="$set('pickerTier', '{{ $tierKey }}')"
-                                    class="min-h-11 px-3 rounded-lg text-xs sm:text-sm cursor-pointer {{ $pickerTier === $tierKey ? 'btn-ghost-active' : 'btn-secondary' }}"
+                                    class="min-h-10 px-3 rounded-lg text-xs shrink-0 cursor-pointer {{ $pickerTier === $tierKey ? 'btn-ghost-active' : 'btn-secondary' }}"
                                 >
                                     {{ $tierText }}
                                 </button>
                             @endforeach
                         </div>
 
-                        <label class="inline-flex items-center gap-2 min-h-11 text-xs sm:text-sm cursor-pointer">
+                        <label class="inline-flex items-center gap-2 min-h-10 text-xs sm:text-sm cursor-pointer">
                             <input type="checkbox" wire:model.live="onlyCompatible" class="w-4 h-4 rounded accent-[#C2410C]">
                             <span>Hanya tampilkan yang cocok</span>
                         </label>
