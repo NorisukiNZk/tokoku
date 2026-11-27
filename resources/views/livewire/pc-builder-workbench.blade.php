@@ -630,19 +630,19 @@
             <div>
                 <h1 class="text-xl font-extrabold">{{ $store->store_name }} - Lembar Estimasi Rakitan PC</h1>
                 <p class="text-xs text-slate-600">{{ $store->workshop_address }} | WA: {{ $store->whatsapp_number }}</p>
+                <p class="text-xs mt-1">
+                    <strong>Tanggal Cetak:</strong> {{ now()->format('d M Y, H:i') }}
+                    @if($shareCode !== '') · <span class="font-mono font-bold">Kode: {{ $shareCode }}</span> @endif
+                    @if($buildName !== '') · {{ $buildName }} @endif
+                    @if($customerName !== '') · Pemesan: {{ $customerName }} @endif
+                </p>
             </div>
-            <div class="text-right text-xs">
-                <p class="font-bold">Tanggal Cetak: {{ now()->format('d M Y, H:i') }}</p>
-                @if($shareCode !== '')
-                    <p class="font-mono font-semibold">Kode Simulasi: {{ $shareCode }}</p>
-                @endif
-                @if($buildName !== '')
-                    <p>Nama Rakitan: {{ $buildName }}</p>
-                @endif
-                @if($customerName !== '')
-                    <p>Pemesan: {{ $customerName }}</p>
-                @endif
-            </div>
+            @if(!empty($buildQrSvg))
+                <div class="text-center shrink-0">
+                    <div class="inline-block border border-slate-800 p-1 bg-white">{!! $buildQrSvg !!}</div>
+                    <p class="text-[10px] font-semibold mt-0.5">Pindai Buka Rakitan</p>
+                </div>
+            @endif
         </div>
 
         <table class="print-table">

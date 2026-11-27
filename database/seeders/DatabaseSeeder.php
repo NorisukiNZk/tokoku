@@ -489,6 +489,12 @@ class DatabaseSeeder extends Seeder
             );
         }
 
+        Storage::disk('public')->makeDirectory('service-photos');
+        $sampleBeforePath = 'service-photos/sample-before-dust.svg';
+        $sampleAfterPath = 'service-photos/sample-after-clean.svg';
+        Storage::disk('public')->put($sampleBeforePath, $this->renderServiceSampleSvg('KONDISI AWAL (BEFORE)', 'Suhu Puncak 92°C · Debu Heatsink Tebal', '#450A0A', '#EF4444', '#FECACA', '92°C'));
+        Storage::disk('public')->put($sampleAfterPath, $this->renderServiceSampleSvg('SETELAH SERVIS & QC (AFTER)', 'Suhu Stabil 67°C · Heatsink Bersih + Repaste', '#064E3B', '#10B981', '#A7F3D0', '67°C'));
+
         $sampleTicket = ServiceTicket::query()->updateOrCreate(
             ['ticket_number' => 'SRV-202611-0001'],
             [
@@ -504,6 +510,8 @@ class DatabaseSeeder extends Seeder
                 'technician_id' => $tech->id,
                 'status' => 'testing_qc',
                 'diagnosis_notes' => 'Pasta lama mengering keras dan jaring depan casing tertutup debu tebal. Sudah dibersihkan dan diganti pasta baru.',
+                'photo_before_path' => $sampleBeforePath,
+                'photo_after_path' => $sampleAfterPath,
                 'temp_before_c' => 92,
                 'temp_after_c' => 67,
                 'service_fee' => 125000,
@@ -739,6 +747,34 @@ class DatabaseSeeder extends Seeder
   <text x="320" y="362" text-anchor="middle" fill="{$accent}" font-family="Inter, Segoe UI, sans-serif" font-size="18" font-weight="600">{$slotLabel} &middot; {$safeSku}</text>
   <rect x="220" y="394" width="200" height="30" rx="8" fill="#0F172A" stroke="#334155" stroke-width="1"/>
   <text x="320" y="414" text-anchor="middle" fill="#CBD5E1" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="600">[Ilustrasi Contoh Stok]</text>
+</svg>
+SVG;
+    }
+
+    private function renderServiceSampleSvg(string $badge, string $subtitle, string $tintBg, string $accent, string $textAccent, string $tempText): string
+    {
+        $safeBadge = htmlspecialchars($badge, ENT_QUOTES, 'UTF-8');
+        $safeSub = htmlspecialchars($subtitle, ENT_QUOTES, 'UTF-8');
+        $safeTemp = htmlspecialchars($tempText, ENT_QUOTES, 'UTF-8');
+
+        return <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" width="640" height="420">
+  <rect width="640" height="420" fill="#0F172A"/>
+  <rect x="20" y="20" width="600" height="380" rx="20" fill="{$tintBg}" stroke="{$accent}" stroke-width="2.5"/>
+  <rect x="44" y="42" width="290" height="32" rx="8" fill="#0F172A" stroke="{$accent}" stroke-width="1.5"/>
+  <text x="60" y="63" fill="{$textAccent}" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">{$safeBadge}</text>
+  <rect x="486" y="42" width="110" height="32" rx="8" fill="{$accent}"/>
+  <text x="541" y="63" text-anchor="middle" fill="#0F172A" font-family="Plus Jakarta Sans, Inter, sans-serif" font-size="15" font-weight="800">{$safeTemp}</text>
+  <rect x="190" y="106" width="260" height="170" rx="14" fill="#0F172A" stroke="#475569" stroke-width="2.5"/>
+  <circle cx="320" cy="191" r="56" fill="{$tintBg}" stroke="{$accent}" stroke-width="3.5"/>
+  <circle cx="320" cy="191" r="20" fill="{$accent}"/>
+  <line x1="210" y1="126" x2="232" y2="126" stroke="#64748B" stroke-width="3"/>
+  <line x1="408" y1="126" x2="430" y2="126" stroke="#64748B" stroke-width="3"/>
+  <line x1="210" y1="256" x2="232" y2="256" stroke="#64748B" stroke-width="3"/>
+  <line x1="408" y1="256" x2="430" y2="256" stroke="#64748B" stroke-width="3"/>
+  <text x="320" y="320" text-anchor="middle" fill="#F8FAFC" font-family="Plus Jakarta Sans, Inter, sans-serif" font-size="19" font-weight="700">{$safeSub}</text>
+  <rect x="175" y="344" width="290" height="30" rx="8" fill="#0F172A" stroke="#334155" stroke-width="1"/>
+  <text x="320" y="364" text-anchor="middle" fill="#CBD5E1" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="600">[Ilustrasi Contoh Dokumentasi Bengkel]</text>
 </svg>
 SVG;
     }

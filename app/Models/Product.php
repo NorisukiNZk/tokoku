@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
@@ -67,8 +68,52 @@ class Product extends Model
             static::flushProductCaches();
         });
 
-        static::deleted(function () {
+        static::updated(function (self $product) {
+            $tracked = ['price', 'stock', 'availability_status', 'show_in_marketplace'];
+            $changes = array_intersect_key($product->getChanges(), array_flip($tracked));
+            if (count($changes) === 0) {
+                return;
+            }
+
+            $before = [];
+            $after = [];
+            $parts = [];
+            foreach ($changes as $field => $newVal) {
+                $oldVal = $product->getOriginal($field);
+                $before[$field] = $oldVal;
+                $after[$field] = $newVal;
+                if ($field === 'price') {
+                    $parts[] = 'Harga Rp ' . number_format((int) $oldVal, 0, ',', '.') . ' -> Rp ' . number_format((int) $newVal, 0, ',', '.');
+                } elseif ($field === 'stock') {
+                    $parts[] = "Stok {$oldVal} -> {$newVal}";
+                } elseif ($field === 'availability_status') {
+                    $parts[] = "Status {$oldVal} -> {$newVal}";
+                } elseif ($field === 'show_in_marketplace') {
+                    $parts[] = 'Tayang etalase: ' . ($newVal ? 'Ya' : 'Tidak');
+                }
+            }
+
+            ActivityLogger::record(
+                action: 'product_updated',
+                subjectType: 'Product',
+                subjectId: $product->id,
+                subjectLabel: "{$product->sku} - {$product->name}",
+                description: implode(' · ', $parts),
+                before: $before,
+                after: $after,
+            );
+        });
+
+        static::deleted(function (self $product) {
             static::flushProductCaches();
+            ActivityLogger::record(
+                action: 'product_deleted',
+                subjectType: 'Product',
+                subjectId: $product->id,
+                subjectLabel: "{$product->sku} - {$product->name}",
+                description: 'Produk dihapus dari katalog.',
+                before: ['price' => $product->price, 'stock' => $product->stock],
+            );
         });
     }
 

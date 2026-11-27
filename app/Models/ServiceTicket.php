@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ActivityLogger;
 use App\Services\SparepartInventoryService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,12 +27,16 @@ class ServiceTicket extends Model
         'technician_id',
         'status',
         'diagnosis_notes',
+        'photo_before_path',
+        'photo_after_path',
         'temp_before_c',
         'temp_after_c',
         'service_fee',
         'parts_total',
         'grand_total',
         'warranty_until',
+        'customer_approved_at',
+        'customer_approval_note',
         'is_sample_data',
     ];
 
@@ -40,6 +45,7 @@ class ServiceTicket extends Model
         return [
             'preferred_date' => 'date',
             'warranty_until' => 'date',
+            'customer_approved_at' => 'datetime',
             'temp_before_c' => 'integer',
             'temp_after_c' => 'integer',
             'service_fee' => 'integer',
@@ -88,6 +94,48 @@ class ServiceTicket extends Model
             if ($ticket->wasChanged('status') && class_exists(SparepartInventoryService::class)) {
                 app(SparepartInventoryService::class)->syncTicketPartsForStatus($ticket);
             }
+        });
+
+        static::updated(function (self $ticket) {
+            if ($ticket->wasChanged('customer_approved_at')) {
+                return;
+            }
+
+            $tracked = ['status', 'service_fee', 'grand_total', 'technician_id'];
+            $changes = array_intersect_key($ticket->getChanges(), array_flip($tracked));
+            if (count($changes) === 0) {
+                return;
+            }
+
+            $before = [];
+            $after = [];
+            $parts = [];
+            foreach ($changes as $field => $newVal) {
+                $oldVal = $ticket->getOriginal($field);
+                $before[$field] = $oldVal;
+                $after[$field] = $newVal;
+                if ($field === 'status') {
+                    $oldLabel = self::STATUSES[$oldVal] ?? $oldVal;
+                    $newLabel = self::STATUSES[$newVal] ?? $newVal;
+                    $parts[] = "Status {$oldLabel} -> {$newLabel}";
+                } elseif ($field === 'service_fee') {
+                    $parts[] = 'Biaya jasa Rp ' . number_format((int) $oldVal, 0, ',', '.') . ' -> Rp ' . number_format((int) $newVal, 0, ',', '.');
+                }
+            }
+
+            if (count($parts) === 0) {
+                $parts[] = 'Data tiket servis diperbarui.';
+            }
+
+            ActivityLogger::record(
+                action: 'ticket_updated',
+                subjectType: 'ServiceTicket',
+                subjectId: $ticket->id,
+                subjectLabel: "{$ticket->ticket_number} ({$ticket->device_brand_model})",
+                description: implode(' · ', $parts),
+                before: $before,
+                after: $after,
+            );
         });
 
         static::deleted(function () {
@@ -191,6 +239,28 @@ class ServiceTicket extends Model
     public function statusLabel(): string
     {
         return self::STATUSES[$this->status] ?? $this->status;
+    }
+
+    public function photoBeforeUrl(): ?string
+    {
+        return $this->resolvePublicMediaUrl($this->photo_before_path);
+    }
+
+    public function photoAfterUrl(): ?string
+    {
+        return $this->resolvePublicMediaUrl($this->photo_after_path);
+    }
+
+    private function resolvePublicMediaUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return '/storage/' . ltrim($path, '/');
     }
 
     public function phoneLastFour(): string

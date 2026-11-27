@@ -4,8 +4,12 @@ namespace App\Livewire;
 
 use App\Models\ServicePackage;
 use App\Models\ServiceTicket;
+use App\Models\ServiceTicketLog;
 use App\Models\StoreSetting;
+use App\Services\ActivityLogger;
+use App\Services\QrCodeSvgService;
 use Closure;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -23,6 +27,8 @@ class ServiceCenterPage extends Component
 
     public ?ServiceTicket $trackedTicket = null;
     public ?string $trackingError = null;
+    public string $approvalNote = '';
+    public ?string $approvalSuccessMessage = null;
 
     public string $customerName = '';
     public string $customerPhone = '';
@@ -101,6 +107,82 @@ class ServiceCenterPage extends Component
 
         RateLimiter::clear($rateKey);
         $this->trackedTicket = $ticket;
+        $this->approvalSuccessMessage = null;
+    }
+
+    public function approveTrackedTicketCost(): void
+    {
+        if (! $this->trackedTicket) {
+            return;
+        }
+
+        $rateKey = 'tokoku:approve-cost:' . request()->ip() . ':' . $this->trackedTicket->id;
+        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateKey);
+            $this->trackingError = "Terlalu banyak percobaan konfirmasi. Tunggu {$seconds} detik.";
+
+            return;
+        }
+        RateLimiter::hit($rateKey, 60);
+
+        $this->validate([
+            'approvalNote' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $ticketId = $this->trackedTicket->id;
+        $noteText = trim($this->approvalNote);
+        $approved = false;
+
+        DB::transaction(function () use ($ticketId, $noteText, &$approved) {
+            $fresh = ServiceTicket::query()->lockForUpdate()->find($ticketId);
+            if (! $fresh || $fresh->status !== 'waiting_approval') {
+                return;
+            }
+
+            $fresh->update([
+                'status' => 'in_progress',
+                'customer_approved_at' => now(),
+                'customer_approval_note' => $noteText !== '' ? $noteText : null,
+            ]);
+
+            $totalText = 'Rp ' . number_format((int) $fresh->grand_total, 0, ',', '.');
+            $logMsg = "Pelanggan menyetujui estimasi total biaya {$totalText} secara daring melalui halaman lacak resi.";
+            if ($noteText !== '') {
+                $logMsg .= " Catatan pelanggan: {$noteText}";
+            }
+
+            ServiceTicketLog::query()->create([
+                'service_ticket_id' => $fresh->id,
+                'status' => 'in_progress',
+                'note' => $logMsg,
+                'is_public' => true,
+            ]);
+
+            ActivityLogger::record(
+                action: 'ticket_customer_approved',
+                subjectType: 'ServiceTicket',
+                subjectId: $fresh->id,
+                subjectLabel: "{$fresh->ticket_number} ({$fresh->device_brand_model})",
+                description: "Pelanggan {$fresh->customer_name} menyetujui biaya {$totalText} via halaman cek resi.",
+                before: ['status' => 'waiting_approval'],
+                after: ['status' => 'in_progress', 'grand_total' => $fresh->grand_total],
+                customActorName: "Pelanggan ({$fresh->customer_name})",
+            );
+
+            $approved = true;
+        });
+
+        if (! $approved) {
+            $this->trackingError = 'Status tiket sudah berubah dan tidak lagi menunggu persetujuan biaya.';
+
+            return;
+        }
+
+        $this->approvalNote = '';
+        $this->trackedTicket = ServiceTicket::query()
+            ->with(['servicePackage', 'technician', 'parts', 'logs' => fn ($q) => $q->where('is_public', true)])
+            ->find($ticketId);
+        $this->approvalSuccessMessage = 'Persetujuan biaya tercatat! Tim teknisi kami akan segera melanjutkan pengerjaan perangkat Anda.';
     }
 
     public function choosePackage(int $packageId): void
@@ -191,7 +273,7 @@ class ServiceCenterPage extends Component
         $this->reset(['customerName', 'customerPhone', 'customerAddress', 'deviceBrandModel', 'complaintSummary', 'websiteUrl']);
     }
 
-    public function render()
+    public function render(QrCodeSvgService $qr)
     {
         $store = StoreSetting::current();
         $packages = ServicePackage::query()
@@ -199,9 +281,19 @@ class ServiceCenterPage extends Component
             ->orderBy('sort_order')
             ->get();
 
+        $ticketQrSvg = null;
+        if ($this->trackedTicket) {
+            $trackUrl = route('service.index', [
+                'tiket' => $this->trackedTicket->ticket_number,
+                'pin' => $this->trackedTicket->phoneLastFour(),
+            ]);
+            $ticketQrSvg = $qr->generateInlineSvg($trackUrl, 86, 1);
+        }
+
         return view('livewire.service-center-page', [
             'store' => $store,
             'packages' => $packages,
+            'ticketQrSvg' => $ticketQrSvg,
         ])
             ->title('Layanan Servis PC & Lacak Resi - ' . $store->store_name)
             ->layoutData([

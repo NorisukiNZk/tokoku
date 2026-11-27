@@ -1,4 +1,8 @@
-<div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-5 sm:space-y-6">
+<div
+    x-data="{ zoomPhotoUrl: null, zoomPhotoCaption: '' }"
+    @keydown.escape.window="zoomPhotoUrl = null"
+    class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-5 sm:space-y-6"
+>
     <div class="surface-ink rounded-2xl p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
         <div class="space-y-1.5">
             <span class="inline-block px-2.5 py-0.5 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-bold text-xs">
@@ -273,6 +277,68 @@
                             </span>
                         </div>
 
+                        @if($approvalSuccessMessage)
+                            <div class="badge-ok rounded-xl p-4 text-sm font-semibold" role="status">
+                                {{ $approvalSuccessMessage }}
+                            </div>
+                        @endif
+
+                        @if($trackedTicket->status === 'waiting_approval')
+                            <div class="surface-ink rounded-2xl p-4 sm:p-5 space-y-3.5" role="region" aria-label="Konfirmasi Persetujuan Biaya Servis">
+                                <div class="space-y-1">
+                                    <span class="inline-block px-2.5 py-0.5 rounded-md bg-[#FB923C] text-[#0F172A] font-display font-bold text-xs">
+                                        Membutuhkan Persetujuan Anda
+                                    </span>
+                                    <h3 class="font-display font-extrabold text-base sm:text-lg">
+                                        Estimasi Total Biaya: Rp {{ number_format($trackedTicket->grand_total, 0, ',', '.') }}
+                                    </h3>
+                                    <p class="text-xs sm:text-sm ink-muted leading-relaxed">
+                                        Berdasarkan pemeriksaan teknisi di bawah, klik tombol setujui agar pengerjaan dapat langsung dilanjutkan tanpa menunggu balasan chat.
+                                    </p>
+                                </div>
+
+                                <form wire:submit="approveTrackedTicketCost" class="space-y-2.5">
+                                    <div>
+                                        <label for="catatan-persetujuan" class="sr-only">Catatan opsional untuk teknisi</label>
+                                        <input
+                                            id="catatan-persetujuan"
+                                            type="text"
+                                            wire:model="approvalNote"
+                                            maxlength="200"
+                                            placeholder="Catatan opsional (misal: tolong simpan part lamanya ya)..."
+                                            class="input-ink w-full min-h-11 px-3.5 rounded-lg text-xs sm:text-sm"
+                                        >
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <button
+                                            type="submit"
+                                            wire:loading.attr="disabled"
+                                            wire:target="approveTrackedTicketCost"
+                                            class="btn-ink-accent flex-1 min-h-11 px-4 rounded-lg text-xs sm:text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            <span wire:loading.remove wire:target="approveTrackedTicketCost">Setujui Biaya &amp; Lanjutkan Pengerjaan</span>
+                                            <span wire:loading wire:target="approveTrackedTicketCost">Mencatat Persetujuan...</span>
+                                        </button>
+                                        <a
+                                            href="{{ $store->whatsappUrl('Halo Admin ' . $store->store_name . ', saya ingin berdiskusi dulu mengenai estimasi biaya tiket ' . $trackedTicket->ticket_number . '.') }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="btn-ink-outline min-h-11 px-4 rounded-lg text-xs sm:text-sm inline-flex items-center justify-center"
+                                        >
+                                            Diskusi via WA
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        @elseif($trackedTicket->customer_approved_at)
+                            <div class="badge-ok rounded-xl px-4 py-3 text-xs sm:text-sm flex flex-wrap items-center justify-between gap-2">
+                                <span class="font-semibold">Biaya telah disetujui pelanggan pada {{ $trackedTicket->customer_approved_at->format('d M Y, H:i') }}</span>
+                                @if($trackedTicket->customer_approval_note)
+                                    <span class="opacity-90">Catatan: "{{ $trackedTicket->customer_approval_note }}"</span>
+                                @endif
+                            </div>
+                        @endif
+
                         @if($trackedTicket->status !== 'cancelled')
                             @php $currentRank = \App\Models\ServiceTicket::PROGRESS_ORDER[$trackedTicket->status] ?? 1; @endphp
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
@@ -307,6 +373,46 @@
                                 @if($trackedTicket->diagnosis_notes)
                                     <p class="text-muted-ink leading-relaxed">{{ $trackedTicket->diagnosis_notes }}</p>
                                 @endif
+                            </div>
+                        @endif
+
+                        @if($trackedTicket->photoBeforeUrl() || $trackedTicket->photoAfterUrl())
+                            <div class="space-y-2.5">
+                                <h3 class="font-semibold text-sm">Dokumentasi Foto Sebelum &amp; Sesudah Servis</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    @if($trackedTicket->photoBeforeUrl())
+                                        <figure class="surface-subtle rounded-xl overflow-hidden">
+                                            <button
+                                                type="button"
+                                                @click="zoomPhotoUrl = @js($trackedTicket->photoBeforeUrl()); zoomPhotoCaption = 'Kondisi Awal (Before) - ' + @js($trackedTicket->ticket_number)"
+                                                class="block w-full aspect-[16/10] bg-[#0F172A] cursor-zoom-in overflow-hidden"
+                                                aria-label="Perbesar foto kondisi awal sebelum servis"
+                                            >
+                                                <img src="{{ $trackedTicket->photoBeforeUrl() }}" alt="Foto kondisi awal sebelum servis" class="w-full h-full object-cover">
+                                            </button>
+                                            <figcaption class="px-3 py-2 text-xs font-semibold flex items-center justify-between">
+                                                <span>Sebelum Servis (Before)</span>
+                                                <span class="text-muted-ink font-normal">Ketuk perbesar</span>
+                                            </figcaption>
+                                        </figure>
+                                    @endif
+                                    @if($trackedTicket->photoAfterUrl())
+                                        <figure class="surface-subtle rounded-xl overflow-hidden">
+                                            <button
+                                                type="button"
+                                                @click="zoomPhotoUrl = @js($trackedTicket->photoAfterUrl()); zoomPhotoCaption = 'Setelah Servis & QC (After) - ' + @js($trackedTicket->ticket_number)"
+                                                class="block w-full aspect-[16/10] bg-[#0F172A] cursor-zoom-in overflow-hidden"
+                                                aria-label="Perbesar foto hasil setelah servis"
+                                            >
+                                                <img src="{{ $trackedTicket->photoAfterUrl() }}" alt="Foto hasil setelah servis" class="w-full h-full object-cover">
+                                            </button>
+                                            <figcaption class="px-3 py-2 text-xs font-semibold flex items-center justify-between">
+                                                <span>Setelah Servis / QC (After)</span>
+                                                <span class="text-muted-ink font-normal">Ketuk perbesar</span>
+                                            </figcaption>
+                                        </figure>
+                                    @endif
+                                </div>
                             </div>
                         @endif
 
@@ -399,12 +505,15 @@
                     <div>
                         <h1 class="text-xl font-extrabold">{{ $store->store_name }} - Bukti &amp; Laporan Servis</h1>
                         <p class="text-xs text-slate-600">{{ $store->workshop_address }} | WA: {{ $store->whatsapp_number }}</p>
+                        <p class="font-mono font-bold text-sm mt-1">{{ $trackedTicket->ticket_number }} · Status: {{ $trackedTicket->statusLabel() }}</p>
+                        <p class="text-xs text-slate-600">Dicetak: {{ now()->format('d M Y, H:i') }}</p>
                     </div>
-                    <div class="text-right text-xs">
-                        <p class="font-mono font-bold text-sm">{{ $trackedTicket->ticket_number }}</p>
-                        <p>Status: <strong>{{ $trackedTicket->statusLabel() }}</strong></p>
-                        <p>Dicetak: {{ now()->format('d M Y, H:i') }}</p>
-                    </div>
+                    @if($ticketQrSvg)
+                        <div class="text-center shrink-0">
+                            <div class="inline-block border border-slate-800 p-1 bg-white">{!! $ticketQrSvg !!}</div>
+                            <p class="text-[10px] font-semibold mt-0.5">Pindai Cek Resi</p>
+                        </div>
+                    @endif
                 </div>
 
                 <table class="print-table">
@@ -475,4 +584,29 @@
             </section>
         @endif
     @endif
+
+    <div
+        x-show="zoomPhotoUrl"
+        x-cloak
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Pratinjau foto dokumentasi servis"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 no-print"
+        @click.self="zoomPhotoUrl = null"
+    >
+        <div class="max-w-4xl w-full flex flex-col gap-3">
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-xs sm:text-sm font-semibold text-white truncate" x-text="zoomPhotoCaption"></p>
+                <button type="button" @click="zoomPhotoUrl = null" class="btn-secondary min-h-11 px-4 rounded-lg text-sm shrink-0 cursor-pointer">
+                    Tutup (Esc)
+                </button>
+            </div>
+            <div class="surface-card rounded-xl overflow-hidden p-2 flex items-center justify-center max-h-[80dvh]">
+                <img :src="zoomPhotoUrl" :alt="zoomPhotoCaption" class="max-h-[76dvh] w-auto object-contain rounded-lg">
+            </div>
+        </div>
+    </div>
 </div>

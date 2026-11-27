@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -38,6 +39,31 @@ class StoreSetting extends Model
     {
         static::saved(function () {
             static::flushCache();
+        });
+
+        static::updated(function (self $setting) {
+            $tracked = ['store_name', 'whatsapp_number', 'workshop_address', 'default_assembly_fee', 'usd_to_idr_rate'];
+            $changes = array_intersect_key($setting->getChanges(), array_flip($tracked));
+            if (count($changes) === 0) {
+                return;
+            }
+
+            $before = [];
+            $after = [];
+            foreach ($changes as $field => $newVal) {
+                $before[$field] = $setting->getOriginal($field);
+                $after[$field] = $newVal;
+            }
+
+            ActivityLogger::record(
+                action: 'settings_updated',
+                subjectType: 'StoreSetting',
+                subjectId: $setting->id,
+                subjectLabel: $setting->store_name,
+                description: 'Profil/tarif toko diperbarui (' . implode(', ', array_keys($changes)) . ').',
+                before: $before,
+                after: $after,
+            );
         });
 
         static::deleted(function () {

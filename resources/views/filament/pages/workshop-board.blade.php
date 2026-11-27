@@ -177,18 +177,34 @@
                                             {{ $ticket->parts->count() }} part
                                         </span>
                                     @endif
+
+                                    @if($ticket->customer_approved_at)
+                                        <span class="tk-badge tk-badge-ok">
+                                            Biaya Disetujui
+                                        </span>
+                                    @endif
                                 </div>
 
                                 <div style="font-size: 0.74rem; color: var(--tk-muted); display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--tk-border);">
                                     <span>PIC: <strong style="color: var(--tk-ink);">{{ $ticket->technician?->name ?? 'Belum diambil' }}</strong></span>
-                                    <a
-                                        href="{{ $ticket->customerWhatsappUrl() }}"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style="font-weight: 700; color: var(--tk-accent-soft-fg); text-decoration: none;"
-                                    >
-                                        Chat WA &nearr;
-                                    </a>
+                                    <div style="display: inline-flex; align-items: center; gap: 0.65rem;">
+                                        <a
+                                            href="{{ route('staff.service-sticker', ['ticket' => $ticket->id]) }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style="font-weight: 700; color: var(--tk-ink); text-decoration: none;"
+                                        >
+                                            Stiker QR
+                                        </a>
+                                        <a
+                                            href="{{ $ticket->customerWhatsappUrl() }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style="font-weight: 700; color: var(--tk-accent-soft-fg); text-decoration: none;"
+                                        >
+                                            Chat WA &nearr;
+                                        </a>
+                                    </div>
                                 </div>
 
                                 {{-- Clean 2-Button Action Row (No wrapping mess!) --}}
@@ -310,6 +326,23 @@
                                 <textarea id="wb-diag" rows="3" wire:model="editDiagnosisNotes" placeholder="Catat penyebab masalah, pembersihan, atau penggantian part..." class="tk-textarea"></textarea>
                             </div>
 
+                            @if($editingTicket->photoBeforeUrl() || $editingTicket->photoAfterUrl())
+                                <div class="tk-field-grid tk-field-grid-2">
+                                    @if($editingTicket->photoBeforeUrl())
+                                        <div class="tk-panel-subtle" style="padding: 0.5rem;">
+                                            <div style="font-size: 0.72rem; font-weight: 700; margin-bottom: 0.35rem;">Foto Awal (Before)</div>
+                                            <img src="{{ $editingTicket->photoBeforeUrl() }}" alt="Foto awal" style="width: 100%; height: 6rem; object-fit: cover; border-radius: 0.45rem;">
+                                        </div>
+                                    @endif
+                                    @if($editingTicket->photoAfterUrl())
+                                        <div class="tk-panel-subtle" style="padding: 0.5rem;">
+                                            <div style="font-size: 0.72rem; font-weight: 700; margin-bottom: 0.35rem;">Foto QC (After)</div>
+                                            <img src="{{ $editingTicket->photoAfterUrl() }}" alt="Foto akhir" style="width: 100%; height: 6rem; object-fit: cover; border-radius: 0.45rem;">
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+
                             <div>
                                 <label for="wb-log" class="tk-label">Pesan Progres Publik (Dilihat Pelanggan di Cek Resi)</label>
                                 <textarea id="wb-log" rows="2" wire:model="editPublicLogNote" placeholder="Opsional: tulis kabar progres singkat..." class="tk-textarea"></textarea>
@@ -317,9 +350,14 @@
                         </div>
 
                         <div class="tk-drawer-foot">
-                            <a href="{{ url('/' . $panelPath . '/service-tickets/' . $editingTicket->id . '/edit') }}" class="tk-btn tk-btn-sm">
-                                Kelola Sparepart &amp; Form Penuh
-                            </a>
+                            <div class="tk-btn-row">
+                                <a href="{{ url('/' . $panelPath . '/service-tickets/' . $editingTicket->id . '/edit') }}" class="tk-btn tk-btn-sm">
+                                    Foto &amp; Sparepart
+                                </a>
+                                <a href="{{ route('staff.service-sticker', ['ticket' => $editingTicket->id]) }}" target="_blank" rel="noopener noreferrer" class="tk-btn tk-btn-sm">
+                                    Cetak Stiker QR
+                                </a>
+                            </div>
                             <button type="submit" wire:loading.attr="disabled" wire:target="saveQuickWorkbench" class="tk-btn tk-btn-primary">
                                 <span wire:loading.remove wire:target="saveQuickWorkbench">Simpan Pembaruan</span>
                                 <span wire:loading wire:target="saveQuickWorkbench">Menyimpan...</span>

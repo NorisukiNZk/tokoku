@@ -7,6 +7,7 @@ use App\Models\PcCatalogPart;
 use App\Models\Product;
 use App\Models\StoreSetting;
 use App\Services\PcCompatibilityService;
+use App\Services\QrCodeSvgService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Url;
@@ -337,7 +338,7 @@ class PcBuilderWorkbench extends Component
         return $resolved;
     }
 
-    public function render(PcCompatibilityService $compat)
+    public function render(PcCompatibilityService $compat, QrCodeSvgService $qr)
     {
         $store = StoreSetting::current();
         $selectedParts = $this->resolveSelectedParts();
@@ -461,6 +462,11 @@ class PcBuilderWorkbench extends Component
             ? 'Rakitan PC (' . $chosenSummaryNames . ') dengan total estimasi Rp ' . number_format($grandTotal, 0, ',', '.') . ' dan daya ' . $evaluation['estimated_wattage'] . 'W di ' . $store->store_name . '.'
             : "Susun rakitan PC dari {$totalCatalogCount} part referensi dengan diagram casing interaktif, cek kecocokan soket/RAM/PSU otomatis, dan penilai performa di {$store->store_name}.";
 
+        $canonicalBuildUrl = $this->shareCode !== ''
+            ? route('pc-builder', ['kode' => $this->shareCode])
+            : route('pc-builder');
+        $buildQrSvg = $qr->generateInlineSvg($canonicalBuildUrl, 86, 1);
+
         return view('livewire.pc-builder-workbench', [
             'store' => $store,
             'slots' => PcCompatibilityService::BUILDER_SLOTS,
@@ -474,13 +480,12 @@ class PcBuilderWorkbench extends Component
             'pickerCandidates' => $pickerCandidates,
             'pickerTotalMatching' => $pickerTotalMatching,
             'whatsappBuildUrl' => $store->whatsappUrl(implode("\n", $waLines)),
+            'buildQrSvg' => $buildQrSvg,
         ])
             ->title($pageTitle)
             ->layoutData([
                 'metaDescription' => $metaDescription,
-                'canonicalUrl' => $this->shareCode !== ''
-                    ? route('pc-builder', ['kode' => $this->shareCode])
-                    : route('pc-builder'),
+                'canonicalUrl' => $canonicalBuildUrl,
             ]);
     }
 }

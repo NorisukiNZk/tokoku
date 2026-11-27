@@ -161,6 +161,32 @@ class ServiceTicketResource extends Resource
                         ->rows(3)
                         ->columnSpanFull(),
                 ]),
+
+            Forms\Components\Section::make('Dokumentasi Foto Sebelum & Sesudah Servis')
+                ->description('Unggah bukti kondisi awal dan hasil akhir pengerjaan agar pelanggan dapat melihatnya di halaman lacak resi (maks. 2 MB per foto).')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\FileUpload::make('photo_before_path')
+                        ->label('Foto Kondisi Awal (Before)')
+                        ->image()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                        ->maxSize(2048)
+                        ->imageResizeMode('contain')
+                        ->imageResizeTargetWidth('1280')
+                        ->imageResizeTargetHeight('960')
+                        ->disk('public')
+                        ->directory('service-photos'),
+                    Forms\Components\FileUpload::make('photo_after_path')
+                        ->label('Foto Setelah Servis / QC (After)')
+                        ->image()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                        ->maxSize(2048)
+                        ->imageResizeMode('contain')
+                        ->imageResizeTargetWidth('1280')
+                        ->imageResizeTargetHeight('960')
+                        ->disk('public')
+                        ->directory('service-photos'),
+                ]),
         ]);
     }
 
@@ -216,6 +242,11 @@ class ServiceTicketResource extends Resource
                     ->options(ServiceTicket::STATUSES),
             ])
             ->actions([
+                Tables\Actions\Action::make('print_sticker')
+                    ->label('Stiker QR')
+                    ->icon('heroicon-o-qr-code')
+                    ->color('gray')
+                    ->url(fn (ServiceTicket $record) => route('staff.service-sticker', ['ticket' => $record->id]), shouldOpenInNewTab: true),
                 Tables\Actions\Action::make('whatsapp_customer')
                     ->label('Chat WA')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
